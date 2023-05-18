@@ -23,6 +23,19 @@ BLUE = "\033[1;34m"
 ORANGE = "\033[1;33m"
 MAGENTA = "\033[1;35m"
 
+def adjust_column_widths(sheet):
+    for column_cells in sheet.columns:
+        max_length = 0
+        column = column_cells[0].column_letter
+        for cell in column_cells:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except TypeError:
+                pass
+        adjusted_width = (max_length + 2) * 1.2
+        sheet.column_dimensions[column].width = adjusted_width
+
 def postMan(file):
 
     # Declaring an XML object
@@ -534,6 +547,8 @@ def json_file(file, wb):
             if not os.path.exists(domain):
                 os.system(f"mkdir {domain}")
 
+            # Adjust column widths
+            adjust_column_widths(sheet) 
             wb.save(f'{domain}\{domain}_JSON_Files.xlsx')    
         
         print(f'{GREEN}\n[+] {domain}_JSON_Files.xlsx was created in your current directory!{RESET}')
@@ -644,7 +659,7 @@ def bitrix(file):
                 break
 
             sheet, wb = create_worksheet_bitrix(host, "API_Endpoints_Bitrix")
-    
+
         # Sorting and removing duplicates
         for row in data:
 
@@ -658,8 +673,12 @@ def bitrix(file):
 
         if not os.path.exists(domain):
             os.system(f"mkdir {domain}")     
+        
+        # Adjust column widths
+        adjust_column_widths(sheet)    
         wb.save(f'{domain}\{domain}_API_Endpoints_Bitrix.xlsx')
         print(f'{GREEN}\n[+] {domain}_API_Endpoints.xlsx was created in your current directory!{RESET}')
+
 
     else:
         print(f'\n{RED}[-] No API Endpoints found (XML/JSON Content-Type) with Bitrix method.{RESET}')    
@@ -870,6 +889,8 @@ def match_not_js(regex, content, url, host, sheet, wb, matched_patterns, string)
             if not os.path.exists(host):
                 os.system(f"mkdir {host}")
 
+            # Adjust column widths
+            adjust_column_widths(sheet) 
             wb.save(f"{host}\{host}_{string}.xlsx")
             wb.close()
 
@@ -1011,6 +1032,8 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string):
             if not os.path.exists(host):
                 os.system(f"mkdir {host}")
 
+            # Adjust column widths
+            adjust_column_widths(sheet) 
             wb.save(f"{host}\{host}_{string}.xlsx")
             wb.close()
 
@@ -1814,3 +1837,4 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing Secrets method with REGEX for {host}...{RESET}') 
 
             main(filename, "Secrets", sheet_secrets, wb_secrets)
+
