@@ -725,6 +725,7 @@ Clear Gate - Cyber Security                                                     
     parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX')
     parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc') based on Burp response via REGEX (Can be a bit slow...)")
     parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX')
+    parser.add_argument('-t', '--threads', required=False, type=int, default=20, help='Number of threads run in parallel (Use this if you want to speed up the process).')
     parser.add_argument('-v', '--verbose', required=False, action="store_true", help='If set, output will be printed to the screen with colors')
     return parser.parse_args()
 
@@ -1120,6 +1121,8 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
 
 if __name__ == '__main__':
 
+    args = parse_args()
+
     # Create a multiprocessing manager
     manager = multiprocessing.Manager()
 
@@ -1127,7 +1130,7 @@ if __name__ == '__main__':
     final_xlsx = manager.list()
 
     # Get the number of CPU cores
-    num_processes = multiprocessing.cpu_count()
+    num_processes = args.threads
 
     # Create a pool of processes
     pool = multiprocessing.Pool(processes=num_processes)
@@ -1310,7 +1313,6 @@ if __name__ == '__main__':
     
     warnings.filterwarnings("ignore")
 
-    args = parse_args()
     files = []    
     matched_patterns = set()
     path_js = set()
