@@ -58,6 +58,10 @@ Options:
   
       Collect URLs based on Burp response via REGEX
       
+  -t, --threads  
+  
+     Number of threads run in parallel (Use this if you want to speed up the process) 
+      
   -v, --verbose  
   
       If set, output will be printed to the screen with colors       
