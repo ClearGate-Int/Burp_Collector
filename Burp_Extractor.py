@@ -4,12 +4,15 @@ import xml.etree.ElementTree as ET
 import base64
 import json
 import os
+import multiprocessing
+import time
 import argparse
 import traceback
 import urllib.parse
 from urllib.parse import urlparse
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from openpyxl import load_workbook
 from urllib3.exceptions import InsecureRequestWarning
 import math
 from collections import Counter
@@ -23,6 +26,27 @@ BLUE = "\033[1;34m"
 ORANGE = "\033[1;33m"
 MAGENTA = "\033[1;35m"
 
+def is_any_process_alive(processes):
+    return True in [p.is_alive() for p in processes]
+
+def adjust_column_widths_disk(filepath):
+    workbook = load_workbook(filepath)
+    for sheet_name in workbook.sheetnames:
+        sheet = workbook[sheet_name]
+        for column_cells in sheet.columns:
+            max_length = 0
+            column = column_cells[0].column_letter
+            for cell in column_cells:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(cell.value)
+                except TypeError:
+                    pass
+            adjusted_width = (max_length + 2) * 1.3
+            sheet.column_dimensions[column].width = adjusted_width
+
+    workbook.save(filepath)
+
 def adjust_column_widths(sheet):
     for column_cells in sheet.columns:
         max_length = 0
@@ -33,9 +57,9 @@ def adjust_column_widths(sheet):
                     max_length = len(cell.value)
             except TypeError:
                 pass
-        adjusted_width = (max_length + 2) * 1.2
+        adjusted_width = (max_length + 2) * 1.3
         sheet.column_dimensions[column].width = adjusted_width
-
+        
 def postMan(file):
 
     # Declaring an XML object
@@ -548,7 +572,7 @@ def json_file(file, wb):
                 os.system(f"mkdir {domain}")
 
             # Adjust column widths
-            adjust_column_widths(sheet) 
+            adjust_column_widths(sheet)
             wb.save(f'{domain}\{domain}_JSON_Files.xlsx')    
         
         print(f'{GREEN}\n[+] {domain}_JSON_Files.xlsx was created in your current directory!{RESET}')
@@ -626,7 +650,6 @@ def bitrix(file):
         # Sorting and removing duplicates
         data = sorted(list(set([tuple(row) for row in data])))
 
-
         if args.directory:
 
             # Create an XML Object
@@ -675,7 +698,7 @@ def bitrix(file):
             os.system(f"mkdir {domain}")     
         
         # Adjust column widths
-        adjust_column_widths(sheet)    
+        adjust_column_widths(sheet)
         wb.save(f'{domain}\{domain}_API_Endpoints_Bitrix.xlsx')
         print(f'{GREEN}\n[+] {domain}_API_Endpoints.xlsx was created in your current directory!{RESET}')
 
@@ -788,122 +811,8 @@ def create_worksheet_json(host, string):
 
     return sheet , wb
 
-def match_not_js(regex, content, url, host, sheet, wb, matched_patterns, string):
-    
-    data = []  
 
-    try:
-        # Iterating over the given regex patterns to search for matches
-        for key, value in regex.items():
-            if args.verbose:
-                # Printing the URL being tested
-                print(f'Testing Regex: {RED}{key}: {value}{RESET}')
-                print(f'Testing URL: {RED}{url}{RESET}')
-
-            # Searching for a match of the current regex pattern
-            pattern = re.compile(value, re.IGNORECASE | re.MULTILINE)
-
-            match = re.findall(pattern, content)
-            
-            if match:
-                for matched_pattern in match:
-
-                    # Only add unique matched patterns to the set
-                    if matched_pattern not in matched_patterns:
-
-                        if "/assets" in str(matched_pattern):
-                            continue
-
-                        if "/images" in str(matched_pattern):
-                            continue
-
-                        if "/css" in str(matched_pattern):
-                            continue
-
-                        if "//" in str(matched_pattern):
-                            continue
-
-                        if "\/\/" in str(matched_pattern):
-                            continue
-                        
-                        flag = False
-                        pattern = str(matched_pattern).split("/")
-
-                        for pat in pattern:
-                            if len(pat) == 1:
-                                flag = True
-                                continue
-                        
-                        if flag:
-                            continue
-
-                        matched_patterns.add(matched_pattern)
-
-                        if len(matched_pattern) != 0:
-                            if len(matched_pattern) > 2:
-                                if matched_pattern[2].endswith('\\'):
-                                    matched_pattern[2] = matched_pattern[2][:-1]
-                                if '\\/' in matched_pattern[2]:
-                                    matched_pattern[2] = matched_pattern[2].replace('\\/', '/')
-                            if 'http' == matched_pattern[0]:
-                                matched_pattern[0] = 'http://'
-
-                            elif 'https' == matched_pattern[0]:
-                                matched_pattern[0] = 'https://'
-
-                            elif 'ftp' == matched_pattern[0]:
-                                matched_pattern[0] = 'ftp://'
-
-                            matched_pattern = "".join(matched_pattern)
-                            if matched_pattern.endswith("?"):
-                                matched_pattern = matched_pattern[:-1]
-
-                            if args.verbose:
-                                print(f'Matched regex: {GREEN}{key}: {value}{RESET} with pattern: {GREEN}{matched_pattern}{RESET}')
-
-                            if '\\/' in matched_pattern:
-                                matched_pattern = matched_pattern.replace('\\/', '/')
-                                
-                            # Only append unique regex matches to data
-                            if matched_pattern not in [row[2] for row in data]:
-                                if host in url:
-                                    print(f"Host is {host} | URL is: {url}")
-                                    data.append([url, f"{key}: ({value})", matched_pattern])
-
-            elif not match:
-                if args.verbose:
-                    print(f'{RED}\n[-] No match has been found for this regex.{RESET}')
-
-        # Removing duplicates and sorting rows
-        data = sorted(list(set([tuple(row) for row in data])))  
-
-        for row in sorted(data):
-            sheet.append(row)
-
-            # Setting font of the cell to Calibri 14
-            row = sheet.max_row
-            sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
-            sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
-            sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
-            
-            if not os.path.exists(host):
-                os.system(f"mkdir {host}")
-
-            # Adjust column widths
-            adjust_column_widths(sheet) 
-            wb.save(f"{host}\{host}_{string}.xlsx")
-            wb.close()
-
-        return host
-
-    except Exception as error:
-        # print the error message and traceback
-        print(error)
-        traceback.print_exc()
-        exit(1)
-    
-
-def match(regex, content, url, host, sheet, wb, matched_patterns, string):
+def match(regex, content, url, host, sheet, wb, matched_patterns, string, static_files, args, final_xlsx):
     
     data = []  
 
@@ -942,6 +851,13 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string):
                             try:
                                 flag = False
                                 if entropy < threshold:
+                                    
+                                    if "//" in str(matched_pattern):
+                                         continue
+
+                                    if "\/\/" in str(matched_pattern):
+                                        continue
+                                    
                                     if matched_pattern.count('/') < 2:
                                         continue
 
@@ -1032,8 +948,7 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string):
             if not os.path.exists(host):
                 os.system(f"mkdir {host}")
 
-            # Adjust column widths
-            adjust_column_widths(sheet) 
+            final_xlsx.append(f"{host}\{host}_{string}.xlsx")
             wb.save(f"{host}\{host}_{string}.xlsx")
             wb.close()
 
@@ -1045,7 +960,7 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string):
         traceback.print_exc()
         exit(1)
     
-def main(file, tool_method, sheet, wb):
+def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx):
 
     # Create an XML Object
     tree = ET.parse(file)
@@ -1089,7 +1004,7 @@ def main(file, tool_method, sheet, wb):
 
         elif counter > 15:
             break    
-
+    
     for i in root:
 
         response = i.find('response').text
@@ -1158,39 +1073,30 @@ def main(file, tool_method, sheet, wb):
 
         if tool_method == "Path_and_Endpoints":
 
-            if unique_path.endswith(".map") or not unique_path.endswith(".map?") or not unique_path.endswith(".js") or not unique_path.endswith(".js?"):
-                
-                print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
+            print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
 
-                endpoint_check += "good"
-                host = match(api_extractor, content, url, unique_host, sheet, wb, matched_patterns, tool_method)
+            endpoint_check += "good"
+            host = match(api_extractor, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
 
-                if host is not None:
-                    final_host = host
-
-            elif not unique_path.endswith(".map") or not unique_path.endswith(".map?") or not unique_path.endswith(".js") or not unique_path.endswith(".js?"):
-                endpoint_check += "good"
-                host = match_not_js(api_extractor_not_js, content, url, unique_host, sheet, wb, matched_patterns, tool_method)
-
-                if host is not None:
-                    final_host = host
+            if host is not None:
+                final_host = host
 
         if tool_method == "URLs":
             print(f'\n{MAGENTA}[+] Testing URL: {url}...{RESET}')
-            host = match(uri_finder, content, url, unique_host, sheet, wb, matched_patterns, tool_method)
+            host = match(uri_finder, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
             if host is not None:
                 final_host = host
 
         if tool_method == "Sub-Domains":
 
             print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
-            host = match(sub_domains, content, url, unique_host, sheet, wb, matched_patterns, tool_method)
+            host = match(sub_domains, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
             if host is not None:
                 final_host = host
 
         if tool_method == "Secrets":
             print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
-            host = match(regex_secrets, content, url, unique_host, sheet, wb, matched_patterns, tool_method)
+            host = match(regex_secrets, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
             if host is not None:
                 final_host = host
     
@@ -1213,6 +1119,18 @@ def main(file, tool_method, sheet, wb):
 
 
 if __name__ == '__main__':
+
+    # Create a multiprocessing manager
+    manager = multiprocessing.Manager()
+
+    # Create a shared list using the manager
+    final_xlsx = manager.list()
+
+    # Get the number of CPU cores
+    num_processes = multiprocessing.cpu_count()
+
+    # Create a pool of processes
+    pool = multiprocessing.Pool(processes=num_processes)
 
     static_files = [
     
@@ -1365,14 +1283,6 @@ if __name__ == '__main__':
     'SSH_privKey' : r"([-]+BEGIN [^\s]+ PRIVATE KEY[-]+[\s]*[^-]*[-]+END [^\s]+ PRIVATE KEY[-]+)",
     }
 
-    api_extractor_not_js = {
-        
-        'PATH Finder_not_js': r'\/[a-zA-Z]+(?:\/[a-zA-Z]+)+\/(?=[a-zA-Z]+\/)?[a-zA-Z]+(?:\/[a-zA-Z]+)*',
-        'API Finder_not_js': r'\/api\/[^"\'\s\\\\\/]*|\/v[1-4]\/[^"\'\s\\\\\/]*',
-        'API Finder_not_js': r'\\\/api\/[^"\'\s\\\\\/]*|\\\/v[1-4]\/[^"\'\s\\\\\/]*',
-        'PATH Finder Backslash_not_js': r'\\\/[a-zA-Z]+(?:\\\/[a-zA-Z]+)+\\\/(?=[a-zA-Z]+\\\/)?[a-zA-Z]+(?:\\\/[a-zA-Z]+)*'
-    }
-
     # Regex for finding Paths and APIs Endpoints *
     api_extractor = { 
     'PATH Finder-v1': r'\/[a-zA-Z_]*(?:\/[a-zA-Z-_]+)*\/[a-zA-Z0-9_]*(?:-[a-zA-Z0-9_]+)*(?:-[a-zA-Z0-9_]+)*[a-zA-Z0-9_]*[a-zA-Z0-9_]*[a-zA-Z0-9_]',
@@ -1404,7 +1314,8 @@ if __name__ == '__main__':
     files = []    
     matched_patterns = set()
     path_js = set()
-    
+    task_args = []
+
     # Creating a new Workbook object
     wb = Workbook()
     wb_json = Workbook()
@@ -1448,7 +1359,7 @@ if __name__ == '__main__':
                     break
                 
                 sheet_secrets, wb_secrets = create_worksheet(host, "Secrets")
-        
+                
                 sheet_api_finder, wb_api_finder = create_worksheet(host,"Path_and_Endpoints")
 
                 sheet_url_finder, wb_url_finder = create_worksheet(host, "URLs")
@@ -1467,13 +1378,13 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing JSON method for {host}...{RESET}') 
                 json_file(filename, wb_json)
                 print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
-                main(filename, "URLs", sheet_url_finder, wb_url_finder)
+                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
-                main(filename, "Secrets", sheet_secrets, wb_secrets)
-                print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}')  
-                main(filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder)
+                task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}') 
+                task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
-                main(filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains)
+                task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
         elif not args.directory:
             # Create an XML Object
@@ -1509,26 +1420,17 @@ if __name__ == '__main__':
             print(f'{BLUE}\n[+] Testing JSON method for {host}...{RESET}') 
             json_file(filename, wb_json)
             print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
-            main(filename, "URLs", sheet_url_finder, wb_url_finder)
+            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
-            main(filename, "Secrets", sheet_secrets, wb_secrets)
-            print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}')  
-            main(filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder)
+            task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}') 
+            task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
-            main(filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains)
+            task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if not args.all:
-        if args.directory:
-            
-            sheet_url_finder, wb_url_finder = create_worksheet_main("URLs")
 
-            sheet_secrets, wb_secrets = create_worksheet_main("Secrets")
-
-            sheet_api_finder, wb_api_finder = create_worksheet_main("API Endpoints")
-
-            sheet_sub_domains, wb_sub_domains = create_worksheet_main("Sub Domains")
-        
-        elif not args.directory:
+        if not args.directory:
 
             sheet_url_finder, wb_url_finder = create_worksheet_main("URLs")
 
@@ -1554,13 +1456,14 @@ if __name__ == '__main__':
                     content = content.decode('latin-1')
                     host = i.find('host').text
                     break
-            
-            if not args.all and not args.verbose:  
-                print(f'{BLUE}\n[+] Testing Bitrix method for {host}...{RESET}')  
-            
-            bitrix(filename)
+                
+                if not args.all and not args.verbose:  
+                    print(f'{BLUE}\n[+] Testing Bitrix method for {host}...{RESET}')  
+                
+                bitrix(filename)
 
         elif not args.directory:
+
             # Create an XML Object
             tree = ET.parse(filename)
             main_root = tree.getroot()
@@ -1621,8 +1524,10 @@ if __name__ == '__main__':
 
     if args.urls and not args.all:
         
+        counter = 0
         if args.directory:
             for filename in files:
+                counter += 1
                 # Create an XML Object
                 tree = ET.parse(filename)
                 main_root = tree.getroot()
@@ -1638,8 +1543,10 @@ if __name__ == '__main__':
                 
                 if not args.all and not args.verbose:  
                     print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}')  
-                
-                main(filename, "URLs", sheet_url_finder, wb_url_finder)
+
+                sheet_url_finder, wb_url_finder = create_worksheet_main(f"URLs_{counter}")
+
+                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
                 
         elif not args.directory:
@@ -1659,11 +1566,14 @@ if __name__ == '__main__':
             if not args.all and not args.verbose:      
                 print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}')  
 
-            main(filename, "URLs", sheet_url_finder, wb_url_finder)
+            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.domain and not args.all:
+
         if args.directory:
+            counter = 0
             for filename in files:
+                counter += 1
                 # Create an XML Object
                 tree = ET.parse(filename)
                 main_root = tree.getroot()
@@ -1680,7 +1590,9 @@ if __name__ == '__main__':
                 if not args.all and not args.verbose:  
                     print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
                 
-                main(filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains)
+                sheet_sub_domains, wb_sub_domains = create_worksheet_main(f"Sub Domains_{counter}")
+                # Map the function and arguments to the pool
+                task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
 
         elif not args.directory:
@@ -1700,8 +1612,8 @@ if __name__ == '__main__':
             if not args.all and not args.verbose:     
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
 
-            main(filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains)
-
+            # Map the function and arguments to the pool
+            task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.json and not args.all:
         # Creating a new Workbook object
@@ -1750,8 +1662,9 @@ if __name__ == '__main__':
 
         if args.directory:
             
-            
+            counter = 0
             for filename in files:
+                counter += 1
                 # Create an XML Object
                 tree = ET.parse(filename)
                 main_root = tree.getroot()
@@ -1769,8 +1682,10 @@ if __name__ == '__main__':
                     print(f'\n{BLUE}[+] This might take a while, be patient I tell you!{RESET}')    
                     print(f'{BLUE}\n[+] Testing APIs and PATHs with REGEX method for {host}...{RESET}')
 
-                main(filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder)
+                sheet_api_finder, wb_api_finder = create_worksheet_main(f"API Endpoints_{counter}")
 
+                # Map the function and arguments to the pool
+                task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
         elif not args.directory:
 
@@ -1791,11 +1706,12 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing APIs and PATHs with REGEX method for {host}...{RESET}')  
                 print(f'\n{BLUE}[+] This might take a while, be patient I tell you!{RESET}')
             
-            main(filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder)
-
+            # Map the function and arguments to the pool
+            task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.secrets and not args.all:
-        
+
+        counter = 0
         argumnets = [args.urls, args.api, args.domain]
         if args.directory:
            for filename in files:   
@@ -1815,9 +1731,10 @@ if __name__ == '__main__':
                 if not args.all and not args.verbose:  
                     print(f'{BLUE}\n[+] Testing Secrets method with REGEX for {host}...{RESET}')  
 
-                main(filename, "Secrets", sheet_secrets, wb_secrets)
-        
-
+                sheet_secrets, wb_secrets = create_worksheet_main(f"Secrets_{counter}")
+                # Map the function and arguments to the pool
+                task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+       
         elif not args.directory:
 
             # Create an XML Object
@@ -1836,5 +1753,26 @@ if __name__ == '__main__':
             if not args.all and not args.verbose:  
                 print(f'{BLUE}\n[+] Testing Secrets method with REGEX for {host}...{RESET}') 
 
-            main(filename, "Secrets", sheet_secrets, wb_secrets)
+            task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+    # Create a pool of processes using a context manager
+    with multiprocessing.Pool(processes=num_processes) as pool:
+        # Start the processes
+        results = pool.starmap_async(main, task_args)    
+        
+        # Wait for the results
+        while not results.ready():
+            time.sleep(0)
 
+    # Terminate all processes
+    pool.terminate()
+    pool.join()
+
+    check_dup = []
+
+    for excel in final_xlsx:
+        if excel not in check_dup:
+            check_dup.append(excel)
+            adjust_column_widths_disk(excel)
+
+        if excel in check_dup:
+            continue
