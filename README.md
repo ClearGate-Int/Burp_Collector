@@ -1,4 +1,4 @@
-Tool for extracting information to XLSX file from a Burp Suite file (After Generating Enough Traffic).
+A Multi threaded Tool for extracting information to XLSX file from a Burp Suite file (After Generating Enough Traffic).
 
 1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST and GraphQL).
 2. Collect --bitrix result to JSON file with body and parameters for Postman Application
