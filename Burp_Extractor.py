@@ -17,6 +17,7 @@ from urllib3.exceptions import InsecureRequestWarning
 import math
 from collections import Counter
 import warnings
+import spacy
 
 # Defining some colors for output formatting
 GREEN = "\033[32m"
@@ -25,6 +26,142 @@ RED = "\033[31m"
 BLUE = "\033[1;34m"
 ORANGE = "\033[1;33m"
 MAGENTA = "\033[1;35m"
+
+
+def cleaning(host):
+
+    try:
+        # Installation
+        # pip install spacy
+        # python -m spacy download en_core_web_sm
+        nlp = spacy.load("en_core_web_sm")
+
+        regexes = [
+            r".{100,}",  # Ignore lines with more than 100 characters (overly specific)
+            r"[0-9]{4,}",  # Ignore lines with 4 or more consecutive digits (likely an id)
+            r"[0-9]{3,}$",  # Ignore lines where the last 3 or more characters are digits (likely an id)
+            r"[a-z0-9]{32}",  # Likely MD5 hash or similar
+            r"\b[A-Z]{2,}\w*\b",  # Matches uppercase strings with two or more characters
+            r"\b[A-Z0-9]{5,}\b",  # Matches strings with five or more uppercase letters or digits
+            r"\b[A-Z]{2,}\w*\b" # Matches a word beginning with 2 or more Uppercase letters 
+            r"\b[BCD]{3,}\b",  # Matches strings with three or more consecutive B, C, or D characters
+            r"[0-9]+[A-Z0-9]{5,}",  # Number followed by 5 or more numbers and uppercase letters (almost all noise)
+            r"\/.*\/.*\/.*\/.*\/.*\/.*\/",  # Ignore lines more than 6 directories deep (overly specific)
+            r"\w{8}-\w{4}-\w{4}-\w{4}-\w{12}",  # Ignore UUIDs
+            r"[0-9]+[a-zA-Z]+[0-9]+[a-zA-Z]+[0-9]+",  # Ignore multiple numbers and letters mixed together (likely noise)
+            r"\.(png|jpg|jpeg|gif|svg|bmp|ttf|avif|wav|mp4|aac|ajax|css|all)$",  # Ignore low-value file types
+            r"^$",  # Ignores blank lines
+            r"[^a-zA-Z0-9\s_.-]+",  # Remove non-alphanumeric characters except underscore, dash, and dot at the beginning of a line
+        ]
+
+        wordlist = f"{host}\{host}_wordlist.txt"
+        print(f'{BLUE}\n[+] Cleaning Wordlist, please wait this make take a while..{RESET}')
+        print(f'{BLUE}\n[+] Crazy A** calculations is happening right now man, chill..{RESET}')
+
+        # Read input file
+        with open(wordlist, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        original_size = len(lines)
+
+        # Apply regexes to remove lines
+        for regex in regexes:
+            pattern = re.compile(regex)
+            lines = [line for line in lines if not pattern.search(line)]
+
+        # Remove lines starting with digits
+        lines = [line for line in lines if not re.search(r"^[0-9]", line)]
+
+        # Remove lines that contain only a single character
+        lines = [line for line in lines if len(line.strip()) > 1]
+
+        # Sort and remove duplicates
+        lines = sorted(set(lines))
+
+        # Remove empty lines
+        #lines = [line for line in lines if line.strip()]
+
+        lines = [line for line in lines if any(token.is_alpha and not token.is_stop and len(token.text) > 1 for token in nlp(line.lower()))]
+
+        # Write output file
+        output_file = "{}_cleaned".format(wordlist)
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.writelines(lines)
+
+        # Calculate changes
+        new_size = len(lines)
+        removed = original_size - new_size
+
+        print(f"{BLUE}\n[+] Removed {removed} lines{RESET}")
+        print(f"{BLUE}\n[+] Wordlist is now {new_size} lines{RESET}")
+        print(f"{BLUE}\n[+] Removing old wordlist file{RESET}")
+        print(f"{BLUE}\n[+] Done{RESET}")
+
+        os.remove(f"{host}\{host}_wordlist.txt")
+        os.rename(f"{host}\{host}_wordlist.txt_cleaned", f"{host}\{host}_wordlist.txt")
+    
+    except:
+        print(f"{RED}\n[+] Please install Spacy by issuing these commands in the command line:\n[+] pip install spacy\n[+] python -m spacy download en_core_web_sm{RESET}")
+
+def entropy(string):
+    #"Calculates the Shannon entropy of a string"
+    # get probability of chars in string
+    prob = [float(string.count(c)) / len(string) for c in dict.fromkeys(list(string))]
+
+    # calculate the entropy
+    entropy = - sum([p * math.log(p) / math.log(2.0) for p in prob])
+
+    return entropy
+
+def wordlist_creator(file, host):
+
+    tree = ET.parse(file)
+    root = tree.getroot()
+    wordlist = []
+
+    print(f"{BLUE}\n[+] Please wait, it might take a few minutes...{RESET}")
+
+    for i in root:
+
+        # preserve subdomains, file/dir names with . - _
+        wordlist += re.split('\/|\?|&|=', i[1].text)
+
+        # get subdomain names and break up file names
+        wordlist += re.split('\/|\?|&|=|_|-|\.|\+', i[1].text)
+
+        # get words from cookies, headers, POST body requests
+        wordlist += re.split('\/|\?|&|=|_|-|\.|\+|\:| |\n|\r|"|\'|<|>|{|}|\[|\]|`|~|\!|@|#|\$|;|,|\(|\)|\*|\|', urllib.parse.unquote(base64.b64decode(i[8].text)))
+
+        # response
+        if i[12].text is not None:
+            wordlist += re.split('\/|\?|&|=|_|-|\.|\+|\:| |\n|\r|\t|"|\'|<|>|{|}|\[|\]|`|~|\!|@|#|\$|;|,|\(|\)|\*|\^|\\\\|\|', urllib.parse.unquote(base64.b64decode(i[12].text)))
+
+    auxiliaryList = list(set(wordlist))
+    final = []
+    avgEntropyByLength = {}
+
+    for word in auxiliaryList:
+        if word.isalnum() or '-' in word or '.' in word or '_' in word:
+            en = entropy(word)
+            # remove "random strings" that are high entropy
+            if en < 4.4:
+                final.append(word)
+
+    final.sort()
+
+    print(f"{BLUE}\n[+] Wordlist is {len(final)} lines{RESET}")
+
+    with open(f'{host}\{host}_wordlist.txt', 'w', encoding="utf-8") as f:
+        for item in final:
+            f.write(f"{item}\n")
+
+
+    print(f'{GREEN}\n[+] Wordlist saved to {host}\{host}_wordlist.txt{RESET}')  
+    cleaning(host)
+
+def avgEntropyByChar(en, length):
+    # calulate "average" entropy level
+    return en / length    
 
 def is_any_process_alive(processes):
     return True in [p.is_alive() for p in processes]
@@ -151,12 +288,7 @@ def postMan(file):
                         headers_list = re.findall(r'(?P<name>.*?): (?P<value>.*?)\r\n', content_request)
                         headers_list = [{'key': key, 'value': value} for key, value in headers_list if value]
 
-                        # Grabbing domain from subdomains
-                        url_scheme = domain
-
-                        if "http://" or "https://" or "ftp://" in url_scheme:
-                            url_scheme = "http://" + url_scheme
-
+                        url = i.find('url').text
                         # Searching for requests only
                         request = i.find('request').text
                         # Decoding the request
@@ -170,7 +302,7 @@ def postMan(file):
                                 "method": "POST",
                                 "header": headers_list,
                                 "url": {
-                                    "raw": f"{protocol}://{domain}{path}",
+                                    "raw": url,
                                     "host": [
                                         f"{protocol}://{host}"
                                     ],
@@ -235,7 +367,7 @@ def postMan(file):
                                     "method": "POST",
                                     "header": headers_list,
                                     "url": {
-                                        "raw": f"{protocol}://{domain}{path}",
+                                        "raw": url,
                                         "host": [
                                             f"{protocol}://{host}"
                                         ],
@@ -279,10 +411,10 @@ def postMan(file):
                             if path.endswith("/"):
                                 path = path[:-1]
 
-                            domain = i.find('host').text
                             host = i.find('host').text
                             protocol = i.find('protocol').text
-                            
+                            url = i.find('url').text
+
                             # Searching for requests only
                             request = i.find('request').text
                             # Decoding the request
@@ -290,12 +422,6 @@ def postMan(file):
                             content_request = content_request.decode('latin-1')
                             headers_list = re.findall(r'(?P<name>.*?): (?P<value>.*?)\r\n', content_request)
                             headers_list = [{'key': key, 'value': value} for key, value in headers_list if value]
-
-                            # Grabbing domain from subdomains
-                            url_scheme = domain
-
-                            if "http://" or "https://" or "ftp://" in url_scheme:
-                                url_scheme = "http://" + url_scheme
 
                             # Searching for requests only
                             request = i.find('request').text
@@ -348,7 +474,7 @@ def postMan(file):
                                         "method": "POST",
                                         "header": headers_list,
                                         "url": {
-                                            "raw": f"{protocol}://{domain}{path}",
+                                            "raw": url,
                                             "host": [
                                                 f"{protocol}://{host}"
                                             ],
@@ -396,17 +522,11 @@ def postMan(file):
                         if "?" not in path:
                             path = path
                             
-                        domain = i.find('host').text
                         domain_output = i.find('host').text
                         host = i.find('host').text
                         protocol = i.find('protocol').text
-
-                        # Grabbing domain from subdomains
-                        url_scheme = domain
-
-                        if "http://" or "https://" or "ftp://" in url_scheme:
-                            url_scheme = "http://" + url_scheme
-
+                        url = i.find('url').text
+                        
                         if path in unique_path:
                             continue
                         else:
@@ -420,7 +540,7 @@ def postMan(file):
                                 "method": "GET",
                                 "header": headers_list,
                                 "url": {
-                                    "raw": f"{protocol}://{domain}{path}",
+                                    "raw": url,
                                     "host": [
                                         f"{protocol}://{host}"
                                     ],
@@ -488,6 +608,60 @@ def postMan(file):
             print(f'{GREEN}[+] You can open it with{RESET} {ORANGE}Postman!{RESET}')    
 
 # Function for extracting API Endpoints from Burp Response based on XML/JSON Content-Type (Soap/REST)
+def js_file(file, wb, sheet):
+
+    js_list = []
+
+    # Declaring an XML object
+    tree = ET.parse(file)
+    root = tree.getroot()
+
+    for i in root:
+
+        domain = i.find('host').text
+
+        url = i.find('url').text
+
+        if url.endswith('.js') or 'js?' in url or url.endswith('.map') or 'map?' in url:
+            print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
+            if 'js?' in url or 'map?' in url:
+                if url.endswith('/') or url.endswith('\\'):
+                    url = url[:-1]
+                url = url.split('?')[0]    
+
+            js_list.append(url)
+
+    data = []
+
+    new_list = []
+
+    for js_file in js_list:
+
+        if js_file not in new_list:
+            new_list.append(js_file)
+
+        elif js_file in new_list:
+            continue
+
+    for js in new_list:
+        data.append([js])
+
+    for row in data:
+        sheet.append(row)
+        # Setting font of the cell to Calibri 14
+        row = sheet.max_row
+        sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+
+    if not os.path.exists(domain):
+        os.system(f"mkdir {domain}")
+
+    # Adjust column widths
+    adjust_column_widths(sheet)
+    wb.save(f'{domain}\{domain}_JS_Files.xlsx')    
+
+    print(f'{GREEN}\n[+] {domain}_JS_Files.xlsx was created in your current directory!{RESET}')
+
+# Function for extracting API Endpoints from Burp Response based on XML/JSON Content-Type (Soap/REST)
 def json_file(file, wb):
 
     # Declaring an XML object
@@ -500,6 +674,7 @@ def json_file(file, wb):
     for i in root:
         # Searching for responses only
         response = i.find('response').text
+        url = i.find('url').text
         if response is None:
             continue
         # Decoding the response
@@ -519,7 +694,7 @@ def json_file(file, wb):
                 
                     #path = path.split("?")[0]
                     domain = i.find('host').text
-                    data.append([domain, path])
+                    data.append([domain, path, url])
                 else:
                     continue
 
@@ -566,6 +741,7 @@ def json_file(file, wb):
             row = sheet.max_row
             sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
             sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
             # Removing duplicates and sorting rows
 
             if not os.path.exists(domain):
@@ -715,18 +891,20 @@ def parse_args():
 Developed by Sagiv
 Clear Gate - Cyber Security                                                                                                                           """ 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=banner)
-    parser.add_argument('-f', '--file', type=str, required=False, help='Burp File (Right Click on the domain in the Target Scope and select save selected items and select Base64 encode)')
-    parser.add_argument('-dr', '--directory', type=str, required=False, help='Directroy containing all Burp Suite output files')
-    parser.add_argument('-a', '--all', required=False, action="store_true", help='Use all methods (Generate API Endpoints for Bitrix Task, Collect APIs, URLs and Secrets)')
-    parser.add_argument('-b', '--bitrix', required=False, action="store_true", help='Generate API Endpoints to xlsx file based on JSON/XML Content-Type via Burp Response (Recommended for Bitrix24 Task)')
-    parser.add_argument('-p', '--postman', required=False, action="store_true", help='Collect --bitrix result to JSON file with body and parameters for Postman Application (Recommended)')
-    parser.add_argument('-d', '--domain', required=False, action="store_true", help='Collect Subdomains based on Burp response via REGEX')
-    parser.add_argument('-j', '--json', required=False, action="store_true", help='Collect JSON files based on Burp response via REGEX')
-    parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX')
-    parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc') based on Burp response via REGEX (Can be a bit slow...)")
-    parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX')
-    parser.add_argument('-t', '--', required=False, type=int, default=10, help='Number of threads run in parallel (Use this if you want to speed up the process - Default is 10).')
-    parser.add_argument('-v', '--verbose', required=False, action="store_true", help='If set, output will be printed to the screen with colors')
+    parser.add_argument('-f', '--file', type=str, required=False, help='Burp File (Right Click on the domain in the Target Scope and select save selected items and select Base64 encode).')
+    parser.add_argument('-dr', '--directory', type=str, required=False, help='Directroy containing all Burp Suite output files.')
+    parser.add_argument('-a', '--all', required=False, action="store_true", help='Use all methods below - Can be be slow depends on the size of the project, so leave it running in the background.')
+    parser.add_argument('-b', '--bitrix', required=False, action="store_true", help='Generate API Endpoints to Excel file based on JSON/XML Content-Type via Burp Response - Fast and *Recommended* for Bitrix24 Task.')
+    parser.add_argument('-p', '--postman', required=False, action="store_true", help='Collect --bitrix result to JSON file with body and parameters for Postman Application - Fast and *Recommended*.')
+    parser.add_argument('-w', '--wordlist', required=False, action="store_true", help="Create a tailored wordlist for your target (Based on Request/Responses including Headers/Cookies and body - Can be up to 2 minutes, but very *recommended*.")
+    parser.add_argument('-d', '--domain', required=False, action="store_true", help='Collect Subdomains based on Burp response via REGEX to Excel file - Fast.')
+    parser.add_argument('-j', '--json', required=False, action="store_true", help='Collect JSON files based on Burp response via REGEX to Excel file - Fast.')
+    parser.add_argument('-J', '--js', required=False, action="store_true", help='Collect JS/MAP URLs based on Burp response via REGEX to Excel file - Fast.')
+    parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
+    parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc' - A lot of False-Positive) based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.")
+    parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
+    parser.add_argument('-t', '--threads', required=False, type=int, default=os.cpu_count(), help='Number of threads run in parallel (Default is the number of your CPU Cores).')
+    parser.add_argument('-v', '--verbose', required=False, action="store_true", help='If set, output will be printed to the screen with colors.')
     return parser.parse_args()
 
 def create_worksheet(host, string):
@@ -805,13 +983,33 @@ def create_worksheet_json(host, string):
     sheet.title = "JSON Files"
     sheet['A1'] = 'HOST'
     sheet['B1'] = 'JSON File'
+    sheet['C1'] = 'URL'
 
     header_font = Font(name='Calibri', size=20, bold=True)
     sheet['A1'].font = header_font
     sheet['B1'].font = header_font
+    sheet['C1'].font = header_font
 
     return sheet , wb
 
+def create_worksheet_js(string):
+
+    # Creating a new Workbook object
+    wb = Workbook()
+    
+    # Creating a sheet for the matched patterns and setting the font of the header row
+    sheet = wb.active
+    sheet.title = string
+
+    # Writing data to sheet
+    sheet = wb.active
+    sheet.title = "JS Files"
+    sheet['A1'] = 'JS/MAP File'
+
+    header_font = Font(name='Calibri', size=20, bold=True)
+    sheet['A1'].font = header_font
+
+    return sheet , wb
 
 def match(regex, content, url, host, sheet, wb, matched_patterns, string, static_files, args, final_xlsx):
     
@@ -968,7 +1166,6 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
     root = tree.getroot()
     endpoint_check = ""
     final_host = None
-
     empty_list = []
     empty_url_list = []
     flag = False
@@ -1016,10 +1213,7 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
         content = base64.b64decode(response)
         content = content.decode('latin-1')
         unique_host = i.find('host').text
-        path = i.find('path').text
-        url = str(unique_host) + str(path)
-        protocol = i.find('protocol').text
-       
+
         if flag:
 
             if tool_method == "Secrets":
@@ -1031,12 +1225,7 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
             elif tool_method == "Sub-Domains":
                 sheet, wb = create_worksheet(unique_host, "Sub-Domains")
 
-        if str(protocol) == "http":
-            protocol = "http://"
-        elif str(protocol) == "https":
-            protocol = "https://"
-
-        url = protocol + url
+        url = i.find('url').text
 
         if url not in empty_url_list:
             empty_url_list.append(url)
@@ -1052,13 +1241,7 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
         elif unique_path in empty_list:   
             continue
 
-        # Grabbing domain from subdomains
-        url_scheme = unique_host
-
-        if "http://" or "https://" or "ftp://" in url_scheme:
-            url_scheme = "http://" + url_scheme
-
-        parsed_url = urlparse(url_scheme)
+        parsed_url = urlparse(url)
         domain_parts = parsed_url.netloc.split(".")
         if len(domain_parts) > 2:
             domain = ".".join(domain_parts[1:])
@@ -1074,29 +1257,29 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
 
         if tool_method == "Path_and_Endpoints":
 
-            print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
+            print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
 
             endpoint_check += "good"
             host = match(api_extractor, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
-
             if host is not None:
                 final_host = host
 
         if tool_method == "URLs":
-            print(f'\n{MAGENTA}[+] Testing URL: {url}...{RESET}')
+            print(f'\n{MAGENTA}[+] Testing URL: {url}{RESET}')
             host = match(uri_finder, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
+            
             if host is not None:
                 final_host = host
 
         if tool_method == "Sub-Domains":
 
-            print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
+            print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
             host = match(sub_domains, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
             if host is not None:
                 final_host = host
 
         if tool_method == "Secrets":
-            print(f'\n{MAGENTA}[+] Testing {unique_path} file...{RESET}')
+            print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
             host = match(regex_secrets, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
             if host is not None:
                 final_host = host
@@ -1120,6 +1303,8 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
 
 
 if __name__ == '__main__':
+
+    start = time.time()
 
     args = parse_args()
 
@@ -1337,8 +1522,8 @@ if __name__ == '__main__':
             if "." in filename or filename.endswith(".py") or filename.endswith(".txt"): 
                 continue
      
-    if args.all and args.secrets or args.all and args.api or args.all and args.urls or args.all and args.bitrix or args.all and args.json:
-        print(f'\n{RED}If --all is set, remove other arguments(api/secrets/urls/bitrix/json/postman).{RESET}')
+    if args.all and args.secrets or args.all and args.api or args.all and args.urls or args.all and args.bitrix or args.all and args.json and args.js and args.wordlist:
+        print(f'\n{RED}If --all is set, remove other arguments(api/secrets/urls/bitrix/json/postman/js/domain).{RESET}')
         exit(1)
 
     if args.all:
@@ -1368,6 +1553,8 @@ if __name__ == '__main__':
 
                 sheet_sub_domains, wb_sub_domains = create_worksheet(host, "Sub-Domains")
 
+                sheet_js, wb_js = create_worksheet_js("JS-Files")
+
                 if not args.verbose:
                         print(f'{BLUE}\n[+] Executing Bitrix, Postman, JSON files, Secrets, URLs, APIs in JS files and Sub-domains methods for {host}...{RESET}')  
                         print(f'{BLUE}[+] Add --verbose to see the output printed to the screen with colors.{RESET}')
@@ -1379,6 +1566,8 @@ if __name__ == '__main__':
                 postMan(filename)
                 print(f'{BLUE}\n[+] Testing JSON method for {host}...{RESET}') 
                 json_file(filename, wb_json)
+                print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}') 
+                js_file(filename, wb_js, sheet_js)
                 print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
                 task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
@@ -1387,6 +1576,8 @@ if __name__ == '__main__':
                 task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
                 task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+                wordlist_creator(filename, host)
 
         elif not args.directory:
             # Create an XML Object
@@ -1415,12 +1606,16 @@ if __name__ == '__main__':
 
             sheet_sub_domains, wb_sub_domains = create_worksheet_main("Sub Domains")
             
+            sheet_js, wb_js = create_worksheet_js("JS-Files")
+            
             print(f'{BLUE}\n[+] Testing Bitrix method for {host}...{RESET}')  
             bitrix(filename)
             print(f'{BLUE}\n[+] Testing Postman method for {host}...{RESET}')  
             postMan(filename)
             print(f'{BLUE}\n[+] Testing JSON method for {host}...{RESET}') 
             json_file(filename, wb_json)
+            print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}') 
+            js_file(filename, wb_js, sheet_js)
             print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
             task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
@@ -1429,18 +1624,20 @@ if __name__ == '__main__':
             task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
             task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
-
+            print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+            wordlist_creator(filename, host)
+            
     if not args.all:
 
-        if not args.directory:
+        sheet_url_finder, wb_url_finder = create_worksheet_main("URLs")
 
-            sheet_url_finder, wb_url_finder = create_worksheet_main("URLs")
+        sheet_secrets, wb_secrets = create_worksheet_main("Secrets")
 
-            sheet_secrets, wb_secrets = create_worksheet_main("Secrets")
+        sheet_api_finder, wb_api_finder = create_worksheet_main("API Endpoints")
 
-            sheet_api_finder, wb_api_finder = create_worksheet_main("API Endpoints")
+        sheet_sub_domains, wb_sub_domains = create_worksheet_main("Sub Domains")
 
-            sheet_sub_domains, wb_sub_domains = create_worksheet_main("Sub Domains")
+        sheet_js, wb_js = create_worksheet_js("JS-Files")
 
     if args.bitrix and not args.all:
         
@@ -1524,6 +1721,46 @@ if __name__ == '__main__':
             
             postMan(filename)
 
+    if args.js and not args.all:
+        if args.directory:
+            for filename in files:
+                # Create an XML Object
+                tree = ET.parse(filename)
+                main_root = tree.getroot()
+
+                for i in main_root:
+                    response = i.find('response').text
+                    if response is None:
+                        continue
+                    content = base64.b64decode(response)
+                    content = content.decode('latin-1')
+                    host = i.find('host').text
+                    break
+
+                if not args.all and not args.verbose:  
+                    print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}')   
+                
+                js_file(filename, wb_js, sheet_js)
+
+        elif not args.directory:
+            # Create an XML Object
+            tree = ET.parse(filename)
+            main_root = tree.getroot()
+
+            for i in main_root:
+                response = i.find('response').text
+                if response is None:
+                    continue
+                content = base64.b64decode(response)
+                content = content.decode('latin-1')
+                host = i.find('host').text
+                break
+
+            if not args.all and not args.verbose:      
+                print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}')  
+            
+            js_file(filename, wb_js, sheet_js)
+            
     if args.urls and not args.all:
         
         counter = 0
@@ -1756,12 +1993,33 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing Secrets method with REGEX for {host}...{RESET}') 
 
             task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+
+    if args.wordlist and not args.all:
+
+        # Create an XML Object
+        tree = ET.parse(filename)
+        main_root = tree.getroot()
+
+        for i in main_root:
+            response = i.find('response').text
+            if response is None:
+                continue
+            content = base64.b64decode(response)
+            content = content.decode('latin-1')
+            host = i.find('host').text
+            break
+        
+        if not args.all and not args.verbose:  
+            print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+
+        wordlist_creator(filename, host)
+
     # Create a pool of processes using a context manager
     with multiprocessing.Pool(processes=num_processes) as pool:
         # Start the processes
         results = pool.starmap_async(main, task_args)    
         
-        # Wait for the results
+        # Wait for the results 
         while not results.ready():
             time.sleep(0)
 
@@ -1778,3 +2036,8 @@ if __name__ == '__main__':
 
         if excel in check_dup:
             continue
+    
+    end = time.time()
+    hours, rem = divmod(end-start, 3600)
+    minutes, seconds = divmod(rem, 60)        
+    print("\n--- Running time: {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds), "---")
