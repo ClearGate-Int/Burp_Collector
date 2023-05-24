@@ -41,6 +41,14 @@ Options:
    -p, --postman  
   
       Collect --bitrix result to JSON file with body and parameters for Postman Application    
+  
+   -w, --wordlist  
+  
+      Create a tailored wordlist for your target (Based on Request/Responses including Headers/Cookies and body
+   
+   -J, --js 
+  
+      Collect JS/MAP URLs based on Burp response via REGEX to Excel file
       
   -i, --api  
   
