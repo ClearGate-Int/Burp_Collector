@@ -14,6 +14,7 @@ OPTION - 2: In Burp Suite: Navigate to Proxy - HTTP History - Press CTRL + A - R
 Installation: 
 
       pip install -r requirements.txt
+      python -m spacy download en_core_web_sm
 
 Usage: Burp_API_Extractor
 
