@@ -78,9 +78,11 @@ def cleaning(host):
         # Sort and remove duplicates
         lines = sorted(set(lines))
 
-        # Remove empty lines
-        #lines = [line for line in lines if line.strip()]
-
+        second_lines = [line.replace(".js.map", "").replace(".js", "").replace(".map", "").replace(".min.js", "").replace(".min.map", "").replace(".min", "")
+                for line in lines
+                if ('-' in line or '.' in line or '_' in line or line.endswith((".js.map", ".js", ".map", ".min.js", ".min.map")))
+                and not (line.endswith(".js.map") or line.endswith(".js") or line.endswith(".map") or line.endswith(".min.js") or line.endswith(".min.map")) or line.endswith(".min")]
+        
         lines = [line for line in lines if any(token.is_alpha and not token.is_stop and len(token.text) > 1 for token in nlp(line.lower()))]
 
         # Write output file
@@ -88,8 +90,13 @@ def cleaning(host):
         with open(output_file, "w", encoding="utf-8") as f:
             f.writelines(lines)
 
+        # Write output file
+        output_file = "{}_cleaned".format(wordlist)
+        with open(output_file, "a", encoding="utf-8") as f:
+            f.writelines(second_lines)
+
         # Calculate changes
-        new_size = len(lines)
+        new_size = len(lines) + len(second_lines)
         removed = original_size - new_size
 
         print(f"{BLUE}\n[+] Removed {removed} lines{RESET}")
@@ -138,7 +145,6 @@ def wordlist_creator(file, host):
 
     auxiliaryList = list(set(wordlist))
     final = []
-    avgEntropyByLength = {}
 
     for word in auxiliaryList:
         if word.isalnum() or '-' in word or '.' in word or '_' in word:
