@@ -1002,7 +1002,7 @@ def create_worksheet_js(string):
 
     return sheet , wb
 
-def match(regex, content, url, host, sheet, wb, matched_patterns, string, static_files, args, final_xlsx):
+def match(regex, content, url, host, sheet, wb, matched_patterns, string, args, final_xlsx):
     
     data = []  
 
@@ -1047,34 +1047,18 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string, static
 
                                     if "\/\/" in str(matched_pattern):
                                         continue
-                                    
-                                    if matched_pattern.count('/') < 2:
-                                        continue
 
                                     if '\/\/' in str(matched_pattern):
                                         continue
                                     
                                     if "//" in str(matched_pattern):
                                         continue
-                                    
-                                    for staticFile in static_files:
-                                        if staticFile.lower() in str(matched_pattern.lower()):
-                                            flag = True
-                                            continue
-                                    
+                                                                    
                                     if flag:
                                         continue
-
-                                    split_string = str(matched_pattern).split("/")
-                                    
-                                    for split in split_string:
                                         
-                                        if "-" in split or "_" in split:
-                                            continue
-                                        
-                                        if len(split) == 1:
-                                            flag = True
-                                            continue
+                                    if "-" in matched_pattern or "_" in matched_pattern:
+                                        continue
 
                                     if flag:
                                         continue
@@ -1150,7 +1134,7 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string, static
         traceback.print_exc()
         exit(1)
     
-def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx):
+def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx):
 
     # Create an XML Object
     tree = ET.parse(file)
@@ -1251,13 +1235,13 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
             print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
 
             endpoint_check += "good"
-            host = match(api_extractor, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
+            host = match(api_extractor, content, url, unique_host, sheet, wb, matched_patterns, tool_method, args, final_xlsx)
             if host is not None:
                 final_host = host
 
         if tool_method == "URLs":
             print(f'\n{MAGENTA}[+] Testing URL: {url}{RESET}')
-            host = match(uri_finder, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
+            host = match(uri_finder, content, url, unique_host, sheet, wb, matched_patterns, tool_method, args, final_xlsx)
             
             if host is not None:
                 final_host = host
@@ -1265,13 +1249,13 @@ def main(file, tool_method, sheet, wb, uri_finder, static_files, regex_secrets, 
         if tool_method == "Sub-Domains":
 
             print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
-            host = match(sub_domains, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
+            host = match(sub_domains, content, url, unique_host, sheet, wb, matched_patterns, tool_method, args, final_xlsx)
             if host is not None:
                 final_host = host
 
         if tool_method == "Secrets":
             print(f'\n{MAGENTA}[+] Testing {url}{RESET}')
-            host = match(regex_secrets, content, url, unique_host, sheet, wb, matched_patterns, tool_method, static_files, args, final_xlsx)
+            host = match(regex_secrets, content, url, unique_host, sheet, wb, matched_patterns, tool_method, args, final_xlsx)
             if host is not None:
                 final_host = host
     
@@ -1310,123 +1294,6 @@ if __name__ == '__main__':
 
     # Create a pool of processes
     pool = multiprocessing.Pool(processes=num_processes)
-
-    static_files = [
-    
-    "/css",
-    "/assets",
-    "/images",
-    "/en-us",
-    "/js",
-    "/fonts",
-    "/videos",
-    "/audio",
-    "/icons",
-    "/favicon.ico",
-    "/robots.txt",
-    "/styles",
-    "/media",
-    "/docs",
-    "/thumbnails",
-    "/gallery",
-    "/logos",
-    "/banners",
-    "/carousel",
-    "/header",
-    "/footer",
-    "/slider",
-    "/buttons",
-    "/navigation",
-    "/menu",
-    "/placeholders",
-    "/backgrounds",
-    "/headers",
-    "/footers",
-    "/sidebars",
-    "/widgets",
-    "/social-media",
-    "/error-pages",
-    "/404",
-    "/403",
-    "/500",
-    "/maintenance",
-    "/analytics",
-    "/tracking",
-    "/ajax",
-    "/rss",
-    "/sitemap",
-    "/feeds",
-    "/webmanifest",
-    "/config",
-    "/locales",
-    "/lib",
-    "/vendor",
-    "/build",
-    "/dist",
-    "/src",
-    "/bower_components",
-    "/node_modules",
-    "/images",
-    "/videos",
-    "/documents",
-    "/archives",
-    "/fonts",
-    "/stylesheets",
-    "/plugins",
-    "/themes",
-    "/templates",
-    "/includes",
-    "/layouts",
-    "/partials",
-    "/locales",
-    "/routes",
-    "/controllers",
-    "/models",
-    "/views",
-    "/helpers",
-    "/middleware",
-    'af-ZA', 
-    'ar',     # Arabic
-    'bg-BG',  # Bulgarian (Bulgaria)
-    'ca-ES',  # Catalan (Spain)
-    'cs-CZ',  # Czech (Czech Republic)
-    'da-DK',  # Danish (Denmark)
-    'de-DE',  # German (Germany)
-    'el-GR',  # Greek (Greece)
-    'en-US',  # English (United States)
-    'es-ES',  # Spanish (Spain)
-    'et-EE',  # Estonian (Estonia)
-    'fi-FI',  # Finnish (Finland)
-    'fr-FR',  # French (France)
-    'he-IL',  # Hebrew (Israel)
-    'hi-IN',  # Hindi (India)
-    'hr-HR',  # Croatian (Croatia)
-    'hu-HU',  # Hungarian (Hungary)
-    'id-ID',  # Indonesian (Indonesia)
-    'it-IT',  # Italian (Italy)
-    'ja-JP',  # Japanese (Japan)
-    'ko-KR',  # Korean (South Korea)
-    'lt-LT',  # Lithuanian (Lithuania)
-    'lv-LV',  # Latvian (Latvia)
-    'ms-MY',  # Malay (Malaysia)
-    'nb-NO',  # Norwegian Bokmål (Norway)
-    'nl-NL',  # Dutch (Netherlands)
-    'pl-PL',  # Polish (Poland)
-    'pt-BR',  # Portuguese (Brazil)
-    'pt-PT',  # Portuguese (Portugal)
-    'ro-RO',  # Romanian (Romania)
-    'ru-RU',  # Russian (Russia)
-    'sk-SK',  # Slovak (Slovakia)
-    'sl-SI',  # Slovenian (Slovenia)
-    'sr-RS',  # Serbian (Serbia)
-    'sv-SE',  # Swedish (Sweden)
-    'th-TH',  # Thai (Thailand)
-    'tr-TR',  # Turkish (Turkey)
-    'uk-UA',  # Ukrainian (Ukraine)
-    'vi-VN',  # Vietnamese (Vietnam)
-    'zh-CN',  # Chinese (Simplified, China)
-    'zh-TW',  # Chinese (Traditional, Taiwan)
-]
     
    # Some regex for finding intersting stuff
     regex_secrets = {
@@ -1560,13 +1427,13 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}') 
                 js_file(filename, wb_js, sheet_js)
                 print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
-                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
-                task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}') 
-                task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
-                task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
                 wordlist_creator(filename, host)
 
@@ -1608,13 +1475,13 @@ if __name__ == '__main__':
             print(f'{BLUE}\n[+] Testing JS URLs method for {host}...{RESET}') 
             js_file(filename, wb_js, sheet_js)
             print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}') 
-            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Secrets method for {host}...{RESET}')  
-            task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Secrets", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing APIs & Paths method for {host}...{RESET}') 
-            task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
-            task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
             wordlist_creator(filename, host)
             
@@ -1776,7 +1643,7 @@ if __name__ == '__main__':
 
                 sheet_url_finder, wb_url_finder = create_worksheet_main(f"URLs_{counter}")
 
-                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
                 
         elif not args.directory:
@@ -1796,7 +1663,7 @@ if __name__ == '__main__':
             if not args.all and not args.verbose:      
                 print(f'{BLUE}\n[+] Testing URLs method for {host}...{RESET}')  
 
-            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "URLs", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.domain and not args.all:
 
@@ -1822,7 +1689,7 @@ if __name__ == '__main__':
                 
                 sheet_sub_domains, wb_sub_domains = create_worksheet_main(f"Sub Domains_{counter}")
                 # Map the function and arguments to the pool
-                task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
 
         elif not args.directory:
@@ -1843,7 +1710,7 @@ if __name__ == '__main__':
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
 
             # Map the function and arguments to the pool
-            task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Sub-Domains", sheet_sub_domains, wb_sub_domains, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.json and not args.all:
         # Creating a new Workbook object
@@ -1915,7 +1782,7 @@ if __name__ == '__main__':
                 sheet_api_finder, wb_api_finder = create_worksheet_main(f"API Endpoints_{counter}")
 
                 # Map the function and arguments to the pool
-                task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
         elif not args.directory:
 
@@ -1937,7 +1804,7 @@ if __name__ == '__main__':
                 print(f'\n{BLUE}[+] This might take a while, be patient I tell you!{RESET}')
             
             # Map the function and arguments to the pool
-            task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Path_and_Endpoints", sheet_api_finder, wb_api_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.secrets and not args.all:
 
@@ -1963,7 +1830,7 @@ if __name__ == '__main__':
 
                 sheet_secrets, wb_secrets = create_worksheet_main(f"Secrets_{counter}")
                 # Map the function and arguments to the pool
-                task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+                task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
        
         elif not args.directory:
 
@@ -1983,7 +1850,7 @@ if __name__ == '__main__':
             if not args.all and not args.verbose:  
                 print(f'{BLUE}\n[+] Testing Secrets method with REGEX for {host}...{RESET}') 
 
-            task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, static_files, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
+            task_args.append((filename, "Secrets", sheet_secrets, wb_secrets, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
 
     if args.wordlist and not args.all:
 
