@@ -28,7 +28,7 @@ ORANGE = "\033[1;33m"
 MAGENTA = "\033[1;35m"
 
 
-def cleaning(host):
+def cleaning(host, lines):
 
     try:
         # Installation
@@ -54,13 +54,8 @@ def cleaning(host):
             r"[^a-zA-Z0-9\s_.-]+",  # Remove non-alphanumeric characters except underscore, dash, and dot at the beginning of a line
         ]
 
-        wordlist = f"{host}\{host}_wordlist.txt"
         print(f'{BLUE}\n[+] Cleaning Wordlist, please wait this make take a while..{RESET}')
         print(f'{BLUE}\n[+] Crazy A** calculations is happening right now man, chill..{RESET}')
-
-        # Read input file
-        with open(wordlist, "r", encoding="utf-8") as f:
-            lines = f.readlines()
 
         original_size = len(lines)
 
@@ -85,28 +80,24 @@ def cleaning(host):
         
         lines = [line for line in lines if any(token.is_alpha and not token.is_stop and len(token.text) > 1 for token in nlp(line.lower()))]
 
-        # Write output file
-        output_file = "{}_cleaned".format(wordlist)
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.writelines(lines)
-
-        # Write output file
-        output_file = "{}_cleaned".format(wordlist)
-        with open(output_file, "a", encoding="utf-8") as f:
-            f.writelines(second_lines)
-
         # Calculate changes
         new_size = len(lines) + len(second_lines)
         removed = original_size - new_size
 
         print(f"{BLUE}\n[+] Removed {removed} lines{RESET}")
         print(f"{BLUE}\n[+] Wordlist is now {new_size} lines{RESET}")
-        print(f"{BLUE}\n[+] Removing old wordlist file{RESET}")
         print(f"{BLUE}\n[+] Done{RESET}")
 
-        os.remove(f"{host}\{host}_wordlist.txt")
-        os.rename(f"{host}\{host}_wordlist.txt_cleaned", f"{host}\{host}_wordlist.txt")
-    
+        with open(f'{host}\{host}_wordlist.txt', 'w', encoding="utf-8") as f:
+            
+            for item in lines:
+                f.write(f"{item}\n")
+
+            for second_item in second_lines:
+                f.write(f"{second_item}\n")
+
+        print(f'{GREEN}\n[+] Wordlist saved to {host}\{host}_wordlist.txt{RESET}')  
+
     except:
         print(f"{RED}\n[+] Please install Spacy by issuing these commands in the command line:\n[+] pip install spacy\n[+] python -m spacy download en_core_web_sm{RESET}")
 
@@ -157,13 +148,7 @@ def wordlist_creator(file, host):
 
     print(f"{BLUE}\n[+] Wordlist is {len(final)} lines{RESET}")
 
-    with open(f'{host}\{host}_wordlist.txt', 'w', encoding="utf-8") as f:
-        for item in final:
-            f.write(f"{item}\n")
-
-
-    print(f'{GREEN}\n[+] Wordlist saved to {host}\{host}_wordlist.txt{RESET}')  
-    cleaning(host)
+    cleaning(host, final)
 
 def avgEntropyByChar(en, length):
     # calulate "average" entropy level
