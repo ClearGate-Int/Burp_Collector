@@ -1041,6 +1041,10 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string, args, 
                                     
                                     if "//" in str(matched_pattern):
                                          continue
+                                    
+                                    if "/" in str(matched_pattern):
+                                         if len(matched_pattern) == 2 or len(matched_pattern) == 3:
+                                            continue
 
                                     if "\/\/" in str(matched_pattern):
                                         continue
@@ -1138,6 +1142,7 @@ def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor,
     endpoint_check = ""
     final_host = None
     empty_list = []
+    workbooks = {}
     empty_url_list = []
     flag = False
 
@@ -1169,13 +1174,12 @@ def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor,
 
         if hostTwo != hostOne:
             flag = True
-            wb = Workbook()
             break
 
         elif counter > 15:
             break    
     
-    counter = 0
+    workbooks = {}
     for i in root:
         counter += 1
         response = i.find('response').text
@@ -1187,8 +1191,14 @@ def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor,
         content = content.decode('latin-1')
         unique_host = i.find('host').text
 
+
         if flag:
-                # Creating a new Workbook object
+            if unique_host not in workbooks:
+                wb = Workbook()
+                workbooks[unique_host] = wb
+            else:
+                wb = workbooks[unique_host]
+
             if tool_method == "Secrets":
                 sheet, wb = create_worksheet(unique_host, wb)
             elif tool_method == "Path_and_Endpoints":
