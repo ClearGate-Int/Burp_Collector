@@ -222,6 +222,7 @@ def postMan(file):
     for i in root:
         # Searching for responses only
         response = i.find('response').text
+        status_code = i.find('status').text
         if response is None:
             continue
         # Decoding the response
@@ -244,12 +245,13 @@ def postMan(file):
 
         if match_request is not None:
             content_type_header_request = match_request.group(0).decode('latin-1')
+        
         if method == 'POST':
 
             if match:
                 content_type_header = match.group().decode('utf-8')
                 # if Content-Type is equals to JSON/XML it will be added to the xlsx file
-                if content_type_header is not None and 'application/json' in content_type_header or 'application/xml' in content_type_header:
+                if content_type_header is not None and 'application/json' in content_type_header or 'application/xml' in content_type_header and status_code == 200:
                    
                     path = i.find('path').text
                     name_path = re.sub(r'\?.*', '', path)
@@ -489,7 +491,7 @@ def postMan(file):
             if match:
                 content_type_header = match.group().decode('utf-8')
                 # if Content-Type is equals to JSON/XML it will be added to the xlsx file
-                if 'application/json' in content_type_header or 'application/xml' in content_type_header:
+                if 'application/json' in content_type_header or 'application/xml' in content_type_header and status_code == 200:
 
                     path = i.find('path').text
                     if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
@@ -769,6 +771,7 @@ def bitrix(file):
 
         # Searching for responses only
         request = i.find('request').text
+        status_code = i.find('status').text
         if request is None:
             continue
 
@@ -783,7 +786,7 @@ def bitrix(file):
         if match:
             content_type_header = match.group().decode('utf-8')
             # if Content-Type is equals to JSON/XML it will be added to the xlsx file
-            if 'application/json' in content_type_header or 'application/xml' in content_type_header:
+            if 'application/json' in content_type_header or 'application/xml' in content_type_header and status_code == 200:
                 
                 path = i.find('path').text
 
