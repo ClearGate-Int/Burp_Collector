@@ -898,14 +898,11 @@ Clear Gate - Cyber Security                                                     
     parser.add_argument('-v', '--verbose', required=False, action="store_true", help='If set, output will be printed to the screen with colors.')
     return parser.parse_args()
 
-def create_worksheet(host, string):
-    
-    # Creating a new Workbook object
-    wb = Workbook()
-    
+def create_worksheet(host, wb):
+        
     # Creating a sheet for the matched patterns and setting the font of the header row
     sheet = wb.active
-    sheet.title = f"{host}_{string}"
+    sheet.title = host
 
     sheet['A1'] = 'URL Tested'
     sheet['B1'] = 'Regex'
@@ -1112,7 +1109,6 @@ def match(regex, content, url, host, sheet, wb, matched_patterns, string, args, 
 
         for row in sorted(data):
             sheet.append(row)
-
             # Setting font of the cell to Calibri 14
             row = sheet.max_row
             sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
@@ -1173,13 +1169,15 @@ def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor,
 
         if hostTwo != hostOne:
             flag = True
+            wb = Workbook()
             break
 
         elif counter > 15:
             break    
     
+    counter = 0
     for i in root:
-
+        counter += 1
         response = i.find('response').text
         
         if response is None:
@@ -1190,15 +1188,15 @@ def main(file, tool_method, sheet, wb, uri_finder, regex_secrets, api_extractor,
         unique_host = i.find('host').text
 
         if flag:
-
+                # Creating a new Workbook object
             if tool_method == "Secrets":
-                sheet, wb = create_worksheet(unique_host, "Secrets")
+                sheet, wb = create_worksheet(unique_host, wb)
             elif tool_method == "Path_and_Endpoints":
-                sheet, wb = create_worksheet(unique_host,"Path_and_Endpoints")
+                sheet, wb = create_worksheet(unique_host, wb)
             elif tool_method == "URLs":
-                sheet, wb = create_worksheet(unique_host, "URLs")
+                sheet, wb = create_worksheet(unique_host, wb)
             elif tool_method == "Sub-Domains":
-                sheet, wb = create_worksheet(unique_host, "Sub-Domains")
+                sheet, wb = create_worksheet(unique_host, wb)
 
         url = i.find('url').text
 
