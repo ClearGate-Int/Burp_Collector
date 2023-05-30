@@ -73,9 +73,9 @@ def cleaning(host, lines):
         # Sort and remove duplicates
         lines = sorted(set(lines))
 
-        second_lines = [line.replace(".js.map", "").replace(".js", "").replace(".map", "").replace(".min.js", "").replace(".min.map", "").replace(".min", "")
+        second_lines = [line.replace(".js.map", "").replace(".js", "").replace(".map", "").replace(".min.js", "").replace(".min.map", "").replace(".min", "").replace(".html", "")
                 for line in lines
-                if ('-' in line or '.' in line or '_' in line or line.endswith((".js.map", ".js", ".map", ".min.js", ".min.map")))
+                if ('-' in line or '.' in line or '_' in line or line.endswith((".js.map", ".js", ".map", ".min.js", ".min.map", '.html')))
                 and not (line.endswith(".js.map") or line.endswith(".js") or line.endswith(".map") or line.endswith(".min.js") or line.endswith(".min.map")) or line.endswith(".min")]
         
         lines = [line for line in lines if any(token.is_alpha and not token.is_stop and len(token.text) > 1 for token in nlp(line.lower()))]
@@ -138,7 +138,10 @@ def wordlist_creator(file, host):
     final = []
 
     for word in auxiliaryList:
-        if word.isalnum() or '-' in word or '.' in word or '_' in word:
+        if word.isalnum() or '-' in word or '-' in word or '_' in word:
+            if len(word) == 2:
+                continue
+
             en = entropy(word)
             # remove "random strings" that are high entropy
             if en < 4.4:
