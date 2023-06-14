@@ -762,6 +762,7 @@ def bitrix(file):
 
     # Looping through each request/response
     for i in root:
+        flag = False
         # Searching for responses only
         response = i.find('response').text
         if response is None:
@@ -795,11 +796,36 @@ def bitrix(file):
 
                 if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
                     continue
-                
+
                 path = path.split("?")[0]
-            
+
                 method = i.find('method').text
                 domain = i.find('host').text
+
+                for uniq_endpoint in data:
+                    if len(uniq_endpoint) == 3:
+                        if path == uniq_endpoint[1] and method not in uniq_endpoint[2]:
+                            data.remove([uniq_endpoint[0], uniq_endpoint[1], uniq_endpoint[2]])
+                            method_one = method
+                            method_two = uniq_endpoint[2]
+                            method = str(method_one) + "/" + str(method_two)
+                            data.append([domain, path, method])
+                            continue
+
+                unique_path = path.split("/")
+                path_start = unique_path[1]
+                path_last = unique_path[-1]
+                path_start = "/" + str(path_start)
+                path_last = "/" + str(path_last)
+                if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
+                    continue
+
+                for endpoint in data:
+                    if str(endpoint[1]).startswith(path_start) and str(endpoint[1]).endswith(path_last):
+                        flag = True
+                        continue    
+                if flag:
+                    continue       
                 data.append([domain, path, method])
 
         mime_types = ['application/x-www-form-urlencoded', 'multipart/form-data', 'application/json', 'application/xml', 'text/plain']
@@ -807,15 +833,43 @@ def bitrix(file):
         if match_request:
             
             for mime in mime_types:
+                flag = False
                 if mime in content_type_header_request:
                     
                     path = i.find('path').text
+                    path = path.split("?")[0]
+                    
+                    unique_path = path.split("/")
+                    path_start = unique_path[1]
+                    path_last = unique_path[-1]
+                    path_start = "/" + str(path_start)
+                    path_last = "/" + str(path_last)
                     if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
                         continue
 
-                    path = path.split("?")[0]
+                    for endpoint in data:
+                        if str(endpoint[1]).startswith(path_start) and str(endpoint[1]).endswith(path_last):
+                            flag = True
+                            continue     
+
                     method = i.find('method').text
                     domain = i.find('host').text
+
+                    for uniq_endpoint in data:
+                        if len(uniq_endpoint) == 3:
+                            if path == uniq_endpoint[1] and method not in uniq_endpoint[2]:
+                                data.remove([uniq_endpoint[0], uniq_endpoint[1], uniq_endpoint[2]])
+                                method_one = method
+                                method_two = uniq_endpoint[2]
+                                method = str(method_one) + "/" + str(method_two)
+                                data.append([domain, path, method])
+                                continue
+
+                    if path in str(data):
+                        continue
+
+                    if flag:
+                        continue  
                     data.append([domain, path, method])
 
     if len(data) > 0:
