@@ -6,6 +6,7 @@ A Multi-Processing Tool for extracting information to XLSX file from a Burp Suit
 4. Extract URLs from response body.
 5. Extract Secrets (AWS/Google/Firebase,etc').
 6. Collect JSON files based on Burp response via REGEX
+7. Convert Postman files to Excel
 
 OPTION - 1: In Burp Suite: Right Click on the domain in the Target Scope - Select "save selected items" and then select "Base64-encode" (Some requests may be missing from the target tree scope - Burp Suite issue...).
 
@@ -62,6 +63,10 @@ Options:
   -s, --secrets  
   
       Collect Secrets (AWS/Google keys, etc') based on Burp response via REGEX (Can be a bit slow...)
+      
+  -pe, --postoexcel  
+  
+      Convert Postman files to Excel - Prepare a direcotry containing all postman files (fast)      
       
   -u, --urls  
   
