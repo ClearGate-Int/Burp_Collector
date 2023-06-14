@@ -600,7 +600,7 @@ def postMan(file):
 
         with open(f"{host}\{host}.json", "w") as f:
             f.write(f"{json_collection}")
-            print(f'{GREEN}\n[+] {domain_output}.json was created in your current directory!{RESET}')
+            print(f'{GREEN}\n[+] {domain_output}_Postman_Collection.json was created in your current directory!{RESET}')
             print(f'{GREEN}[+] You can open it with{RESET} {ORANGE}Postman!{RESET}')    
 
 # Function for extracting API Endpoints from Burp Response based on XML/JSON Content-Type (Soap/REST)
@@ -897,6 +897,7 @@ Clear Gate - Cyber Security                                                     
     parser.add_argument('-d', '--domain', required=False, action="store_true", help='Collect Subdomains based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-j', '--json', required=False, action="store_true", help='Collect JSON files based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-J', '--js', required=False, action="store_true", help='Collect JS/MAP URLs based on Burp response via REGEX to Excel file - Fast.')
+    parser.add_argument('-pe', '--postoexcel', required=False, action="store_true", help='Convert Postman file to Excel (Prepare all postman file in a directory)- Fast.')
     parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
     parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc' - A lot of False-Positive) based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.")
     parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
@@ -963,6 +964,41 @@ def create_worksheet_bitrix(host, string):
 
         return sheet, wb
 
+def create_worksheet_postmantoexcel():
+    # Creating a new Workbook object
+    wb = Workbook()
+
+    # Creating a sheet for the matched patterns and setting the font of the header row
+    sheet = wb.active
+
+    sheet.title = "Exorted from Postman"
+
+    sheet['A1'] = 'Endpoint'
+    sheet['B1'] = 'Method'
+    sheet['C1'] = 'Tested?'
+    header_font = Font(name='Calibri', size=20, bold=True)
+    sheet['A1'].font = header_font
+    sheet['B1'].font = header_font
+    sheet['C1'].font = header_font
+
+    return wb, sheet
+
+def extract_endpoints(json_data):
+    
+    if 'item' in json_data:
+        for item in json_data['item']:
+            if 'request' in item:
+                request = item['request']
+                endpoint = request['url']['raw']
+                method = request['method']
+                if endpoint == [] or endpoint == "" or method == [] or method == "":
+                    continue
+
+                data.append([endpoint.replace('{{base_url}}', ''), method])
+                
+            elif 'item' in item:
+                extract_endpoints(item)  # Recursive call for nested items
+
 def create_worksheet_json(host, string):
 
     # Creating a new Workbook object
@@ -1004,6 +1040,32 @@ def create_worksheet_js(string):
     sheet['A1'].font = header_font
 
     return sheet , wb
+
+def postmanToJSON(json_directory, data):
+
+    for filename in os.listdir(json_directory):
+        if filename.endswith('.json'):
+            file_path = os.path.join(json_directory, filename)
+
+            # Open and load the JSON file
+            with open(file_path, 'r', encoding='utf-8') as file:
+                postman_data = json.load(file)
+
+            extract_endpoints(postman_data)
+            # Sorting and removing duplicates
+            wb,sheet = create_worksheet_postmantoexcel()
+
+            for row in data:
+                sheet.append(row)
+                # Setting font of the cell to Calibri 14
+                row = sheet.max_row
+                sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+                sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+                sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
+                
+    adjust_column_widths(sheet)
+    wb.save(f'API_Endpoints.xlsx')
+    print(f"{GREEN}[+] API_Endpoints.xlsx created in {os.getcwd()} directory!{RESET}")
 
 def match(regex, content, url, host, sheet, wb, matched_patterns, string, args, final_xlsx):
     
@@ -1379,6 +1441,11 @@ if __name__ == '__main__':
     wb = Workbook()
     wb_json = Workbook()
 
+    if args.postoexcel:
+        data = []
+        json_directory = input(f"{BLUE}[+] Enter the directory path that contains all postman files: {RESET}")
+        postmanToJSON(json_directory, data)   
+
     if args.directory and args.file:
         print(f'\n{RED}[-] Choose either --file or --directory not both!{RESET}')
         exit(1)
@@ -1393,7 +1460,7 @@ if __name__ == '__main__':
             files.append(os.path.join(directory.decode(), filename))
             if "." in filename or filename.endswith(".py") or filename.endswith(".txt"): 
                 continue
-     
+    
     if args.all and args.secrets or args.all and args.api or args.all and args.urls or args.all and args.bitrix or args.all and args.json and args.js and args.wordlist:
         print(f'\n{RED}If --all is set, remove other arguments(api/secrets/urls/bitrix/json/postman/js/domain).{RESET}')
         exit(1)
