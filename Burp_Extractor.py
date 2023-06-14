@@ -801,6 +801,20 @@ def bitrix(file):
 
                 method = i.find('method').text
                 domain = i.find('host').text
+                patchCheck = path.split("/")
+
+                for j in range(len(patchCheck)):
+                    if patchCheck[j].count("-") >= 3:
+                        patchCheck[j] = "{UUID}"
+                        path = "/".join(patchCheck)
+
+                for first_uuid in data:
+                    if path.endswith("{UUID}") and first_uuid[1].endswith("{UUID}"):
+                        temp_path = path.replace("/{UUID}", "")
+                        first_uuid = first_uuid[1].replace("/{UUID}", "")
+                        if temp_path == first_uuid:
+                                flag = True
+                                continue
 
                 for uniq_endpoint in data:
                     if len(uniq_endpoint) == 3:
@@ -844,6 +858,8 @@ def bitrix(file):
                     path_last = unique_path[-1]
                     path_start = "/" + str(path_start)
                     path_last = "/" + str(path_last)
+                    patchCheck = path.split("/")
+
                     if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
                         continue
 
@@ -865,9 +881,19 @@ def bitrix(file):
                                 data.append([domain, path, method])
                                 continue
 
-                    if path in str(data):
-                        continue
+                    for j in range(len(patchCheck)):
+                        if patchCheck[j].count("-") >= 3:
+                            patchCheck[j] = "{UUID}"
+                            path = "/".join(patchCheck)
 
+                    for second_uuid in data:
+                        if path.endswith("{UUID}") and second_uuid[1].endswith("{UUID}"):
+                            temp_path = path.replace("/{UUID}", "")
+                            second_uuid = second_uuid[1].replace("/{UUID}", "")
+                            if temp_path == second_uuid:
+                                    flag = True
+                                    continue
+                            
                     if flag:
                         continue  
                     data.append([domain, path, method])
