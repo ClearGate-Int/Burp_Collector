@@ -136,25 +136,26 @@ def extract_endpoints(json_data):
         description = ""
         # Extract information from the OpenAPI file
         base_url = json_data.get("servers", [{}])[0].get("url", "")
-        paths = json_data.get("paths", {})
-        # Iterate over the paths
-        for path, path_data in paths.items():
-            for method, method_data in path_data.items():
-                # Check if method_data is a list
-                if isinstance(method_data, list):
-                        # Write data to the Excel sheet
-                        data_postman.append([base_url, path, method.upper(), description])
+        
+        if isinstance(json_data, dict):
+            for key, value in json_data.items():
+                if key == "paths":
+                    for path, methods in value.items():
+                        for method, details in methods.items():
+                            if isinstance(details, dict):
+                                description = details.get("description", "")
+                                data_postman.append([base_url, path, method.upper(), description])
 
-                # Check if method_data is a list
-                elif isinstance(method_data, list):
-                    for item in method_data:
-                        description = item.get("description", "")
-                        # Write data to the Excel sheet
-                        data_postman.append([base_url, path, method.upper(), description])
+                            elif isinstance(details, list):
+                                for item in details:
+                                    description = item.get("description", "")
+                                    data_postman.append([base_url, path, method.upper(), description])
+                else:
+                    extract_endpoints(value)
 
-                for descriptionValue in method_data.values():
-                    if isinstance(descriptionValue, list):
-                        data_postman.append([base_url, path, method.upper(), descriptionValue[0]['description']])
+        elif isinstance(json_data, list):
+            for item in json_data:
+                extract_endpoints(item)
 
     else:
 
@@ -1257,7 +1258,7 @@ Clear Gate - Cyber Security                                                     
     parser.add_argument('-d', '--domain', required=False, action="store_true", help='Collect Subdomains based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-j', '--json', required=False, action="store_true", help='Collect JSON files based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-J', '--js', required=False, action="store_true", help='Collect JS/MAP URLs based on Burp response via REGEX to Excel file - Fast.')
-    parser.add_argument('-pe', '--postoexcel', required=False, action="store_true", help='Convert Postman file to Excel (Prepare all postman file in a directory)- Fast.')
+    parser.add_argument('-pe', '--postoexcel', required=False, action="store_true", help='Convert Postman file to Excel (Prepare all postman file in a directory) - Fast.')
     parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
     parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc' - A lot of False-Positive) based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.")
     parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
@@ -1818,7 +1819,7 @@ if __name__ == '__main__':
                 method_counter = {}
                 unique_endpoint = []                  
                 postmanDirectory(json_directory.strip(), True) 
-                
+
                 answerTwoLoop = input(f"{BLUE}[+] Do you wish to export all endpoints to Excel sheets as well? Y/N: {RESET}")        
                 if answerTwoLoop.upper().strip() == "Y":
                     
