@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl import load_workbook
+from openpyxl.styles import Alignment
 from urllib3.exceptions import InsecureRequestWarning
 import math
 from collections import Counter
@@ -27,6 +28,285 @@ BLUE = "\033[1;34m"
 ORANGE = "\033[1;33m"
 MAGENTA = "\033[1;35m"
 
+
+def create_worksheet_count():
+    # Creating a new Workbook object
+    wb_count = Workbook()
+
+    # Creating a sheet for the matched patterns and setting the font of the header row
+    sheet_count = wb_count.active
+
+    sheet_count.title = "Exorted from Postman"
+
+    sheet_count['A1'] = 'HTTP Methods'
+    sheet_count['B1'] = 'Total Endpoints'
+    header_font = Font(name='Calibri', size=20, bold=True)
+    sheet_count['A1'].font = header_font
+    sheet_count['B1'].font = header_font
+
+    return wb_count, sheet_count
+
+def create_worksheet_postmantoexcel():
+    # Creating a new Workbook object
+    wb = Workbook()
+
+    # Creating a sheet for the matched patterns and setting the font of the header row
+    sheet = wb.active
+
+    sheet.title = "Exorted from Postman"
+
+    sheet['A1'] = 'URL'
+    sheet['B1'] = 'Endpoint'
+    sheet['C1'] = 'Method'
+    sheet['D1'] = 'Description'
+    sheet['E1'] = 'Tested?'
+    header_font = Font(name='Calibri', size=20, bold=True)
+    sheet['A1'].font = header_font
+    sheet['B1'].font = header_font
+    sheet['C1'].font = header_font
+    sheet['D1'].font = header_font
+    sheet['E1'].font = header_font
+
+    return wb, sheet
+
+def adjust_column_widths(sheet):
+    for column_cells in sheet.columns:
+        max_length = 0
+        column = column_cells[0].column_letter
+        for cell in column_cells:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except TypeError:
+                pass
+        adjusted_width = (max_length + 2) * 1.3
+        sheet.column_dimensions[column].width = adjusted_width
+
+def extract_methods(data):
+    
+    pattern = r"[\"']method[\"']\s*:\s*[\"']([^\"']+)[\"']"
+    matches = re.findall(pattern, str(data))
+
+    pattern = r'''['"]raw['"]\s*:\s*['"](?:{{base_url}})?(/[^'"]+)['"]'''
+    path_match = re.findall(pattern, str(data))
+
+
+    combined_results = list(zip(path_match, matches))
+    for combo in combined_results:
+        if combo not in unique_endpoint:
+            unique_endpoint.append(combo)
+            method = combo[1]
+            if method not in method_counter:
+                method_counter[method] = 1
+            elif method in method_counter:
+                method_counter[method] += 1
+        else:
+            continue
+
+
+def count_endpoints(json_data):
+    if "\"openapi\":" in str(json_data) or "\'openapi\':" in str(json_data):
+
+        paths = json_data.get("paths", {})
+        # Iterate over the paths
+        for path, path_data in paths.items():
+            for method, method_data in path_data.items():
+                method = method.upper()
+                # Check if method_data is a list
+                if isinstance(method_data, list):
+                    if method not in method_counter:
+                        method_counter[method] = 1
+                    elif method in method_counter:
+                        method_counter[method] += 1
+
+                else:
+                    if method not in method_counter:
+                        method_counter[method] = 1
+                    elif method in method_counter:
+                        method_counter[method] += 1
+
+    elif 'item' in str(json_data):
+       # Extract methods
+        extract_methods(json_data)
+
+def extract_endpoints(json_data):
+    global base_url
+    
+    if "\"openapi\":" in str(json_data) or "\'openapi\':" in str(json_data):
+        description = ""
+        # Extract information from the OpenAPI file
+        base_url = json_data.get("servers", [{}])[0].get("url", "")
+        paths = json_data.get("paths", {})
+        # Iterate over the paths
+        for path, path_data in paths.items():
+            for method, method_data in path_data.items():
+                # Check if method_data is a list
+                if isinstance(method_data, list):
+                        # Write data to the Excel sheet
+                        data_postman.append([base_url, path, method.upper(), description])
+
+                # Check if method_data is a list
+                elif isinstance(method_data, list):
+                    for item in method_data:
+                        description = item.get("description", "")
+                        # Write data to the Excel sheet
+                        data_postman.append([base_url, path, method.upper(), description])
+
+                for descriptionValue in method_data.values():
+                    if isinstance(descriptionValue, list):
+                        data_postman.append([base_url, path, method.upper(), descriptionValue[0]['description']])
+
+    else:
+
+        description = ""
+        if isinstance(json_data, dict):
+            for item in json_data.get("variable", []):
+                if item.get("key") == "base_url" and not item.get("value", "").startswith("http://localhost"):
+                    base_url = item.get("value")
+                    break
+
+        pattern = r"[\"']method[\"']\s*:\s*[\"']([^\"']+)[\"']"
+        matches = re.findall(pattern, str(json_data))
+
+        pattern = r'''['"]raw['"]\s*:\s*['"](?:{{base_url}})?(/[^'"]+)['"]'''
+        path_match = re.findall(pattern, str(json_data))
+
+        combined_results = list(zip(path_match, matches))
+        for combo in combined_results:
+            if combo not in unique_endpoint:
+                unique_endpoint.append(combo)
+                method = combo[1]
+                path = combo[0]
+                data_postman.append([base_url, path, method, description])
+            else:
+                continue
+                
+def postmanDirectory(json_directory, count=None):
+
+    # Sorting and removing duplicates
+    wb, sheet = create_worksheet_postmantoexcel()
+    wb_method, sheet_method = create_worksheet_count()
+
+    for filename in os.listdir(json_directory):
+        if filename.endswith('.json'):
+            file_path = os.path.join(json_directory, filename)
+
+            # Open and load the JSON file
+            with open(file_path, encoding='utf-8') as file:
+                postman_data = json.load(file)
+            
+                if count is not None:
+                    count_endpoints(postman_data)
+                else:    
+                    extract_endpoints(postman_data)
+    
+    if count is None:                
+        # Sorting and removing duplicates
+        final_data = sorted(list(set([tuple(row) for row in data_postman])))
+
+        for row in final_data:
+            if None in row:
+                continue
+            sheet.append(row)
+            # Setting font of the cell to Calibri 14
+            row = sheet.max_row
+            sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=4).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=5).font = Font(name='Calibri', size=14)
+  
+        adjust_column_widths(sheet)
+        wb.save(f'API_Endpoints.xlsx')
+        print(f"{GREEN}[+] API_Endpoints.xlsx created in {os.getcwd()} directory!{RESET}")
+
+    else:
+        total = 0
+        methods = ""
+        for method, count in method_counter.items():
+            total += count
+            methods += f"{method}: {count}\n"
+            print(f"{GREEN}{method}: {count}{RESET}")
+        data_methods.append([methods, total])
+        print(f"{RED}Total Endpoints: {total}{RESET}")
+        answer = input("Do you wish to export the results to Excel sheet? Y/N: ")
+            
+        if answer.upper() == "Y":
+
+            # Sorting and removing duplicates
+            for row in data_methods:
+                sheet_method.append(row)
+                # Setting font of the cell to Calibri 14
+                row = sheet_method.max_row
+                sheet_method.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+                sheet_method.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+                sheet_method.cell(row=row, column=2).alignment = Alignment(horizontal='center', vertical='center')
+                
+            adjust_column_widths(sheet_method)
+            wb_method.save(f'Total_HTTP_Methods.xlsx')
+            print(f"{GREEN}[+] Total_HTTP_Methods.xlsx created in {os.getcwd()} directory!{RESET}")
+
+def postmanFile(file, count=None):
+
+    # Open and load the JSON file
+    with open(file, 'r', encoding='utf-8') as file:
+        postman_data = json.load(file)
+
+        if count is not None:
+            count_endpoints(postman_data)
+            wb_method, sheet_method = create_worksheet_count()
+
+        else:
+            extract_endpoints(postman_data)
+            # Sorting and removing duplicates
+            wb,sheet = create_worksheet_postmantoexcel()
+   
+    if count is None:   
+    
+        # Sorting and removing duplicates
+        final_data = sorted(list(set([tuple(row) for row in data_postman])))
+
+        for row in final_data:
+            if None in row:
+                continue
+            sheet.append(row)
+            # Setting font of the cell to Calibri 14
+            row = sheet.max_row
+            sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=4).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=5).font = Font(name='Calibri', size=14)
+
+        adjust_column_widths(sheet)
+        wb.save(f'API_Endpoints.xlsx')
+        print(f"{GREEN}[+] API_Endpoints.xlsx created in {os.getcwd()} directory!{RESET}")
+
+    else:
+        total = 0
+        methods = ""
+        for method, count in method_counter.items():
+            total += count
+            methods += f"{method}: {count}\n"
+            print(f"{GREEN}{method}: {count}{RESET}")
+        data_methods.append([methods, total])
+        print(f"{RED}Total Endpoints: {total}{RESET}")
+        answer = input("Do you wish to export the results to Excel sheet? Y/N: ")
+            
+        if answer.upper() == "Y":
+
+            # Sorting and removing duplicates
+            for row in data_methods:
+                sheet_method.append(row)
+                # Setting font of the cell to Calibri 14
+                row = sheet_method.max_row
+                sheet_method.cell(row=row, column=1).font = Font(name='Calibri', size=14)
+                sheet_method.cell(row=row, column=2).font = Font(name='Calibri', size=14)
+                sheet_method.cell(row=row, column=2).alignment = Alignment(horizontal='center', vertical='center')
+                
+            adjust_column_widths(sheet_method)
+            wb_method.save(f'Total_HTTP_Methods.xlsx')
+            print(f"{GREEN}[+] Total_HTTP_Methods.xlsx created in {os.getcwd()} directory!{RESET}")
 
 def cleaning(host, lines):
 
@@ -1044,40 +1324,40 @@ def create_worksheet_bitrix(host, string):
 
         return sheet, wb
 
-def create_worksheet_postmantoexcel():
-    # Creating a new Workbook object
-    wb = Workbook()
+# def create_worksheet_postmantoexcel():
+#     # Creating a new Workbook object
+#     wb = Workbook()
 
-    # Creating a sheet for the matched patterns and setting the font of the header row
-    sheet = wb.active
+#     # Creating a sheet for the matched patterns and setting the font of the header row
+#     sheet = wb.active
 
-    sheet.title = "Exorted from Postman"
+#     sheet.title = "Exorted from Postman"
 
-    sheet['A1'] = 'Endpoint'
-    sheet['B1'] = 'Method'
-    sheet['C1'] = 'Tested?'
-    header_font = Font(name='Calibri', size=20, bold=True)
-    sheet['A1'].font = header_font
-    sheet['B1'].font = header_font
-    sheet['C1'].font = header_font
+#     sheet['A1'] = 'Endpoint'
+#     sheet['B1'] = 'Method'
+#     sheet['C1'] = 'Tested?'
+#     header_font = Font(name='Calibri', size=20, bold=True)
+#     sheet['A1'].font = header_font
+#     sheet['B1'].font = header_font
+#     sheet['C1'].font = header_font
 
-    return wb, sheet
+#     return wb, sheet
 
-def extract_endpoints(json_data):
+# def extract_endpoints(json_data):
     
-    if 'item' in json_data:
-        for item in json_data['item']:
-            if 'request' in item:
-                request = item['request']
-                endpoint = request['url']['raw']
-                method = request['method']
-                if endpoint == [] or endpoint == "" or method == [] or method == "":
-                    continue
+#     if 'item' in json_data:
+#         for item in json_data['item']:
+#             if 'request' in item:
+#                 request = item['request']
+#                 endpoint = request['url']['raw']
+#                 method = request['method']
+#                 if endpoint == [] or endpoint == "" or method == [] or method == "":
+#                     continue
 
-                data.append([endpoint.replace('{{base_url}}', ''), method])
+#                 data.append([endpoint.replace('{{base_url}}', ''), method])
                 
-            elif 'item' in item:
-                extract_endpoints(item)  # Recursive call for nested items
+#             elif 'item' in item:
+#                 extract_endpoints(item)  # Recursive call for nested items
 
 def create_worksheet_json(host, string):
 
@@ -1439,17 +1719,18 @@ if __name__ == '__main__':
 
     args = parse_args()
 
-    # Create a multiprocessing manager
-    manager = multiprocessing.Manager()
+    if not args.wordlist or args.postoexcel:
+        # Create a multiprocessing manager
+        manager = multiprocessing.Manager()
 
-    # Create a shared list using the manager
-    final_xlsx = manager.list()
+        # Create a shared list using the manager
+        final_xlsx = manager.list()
 
-    # Get the number of CPU cores
-    num_processes = args.threads
+        # Get the number of CPU cores
+        num_processes = args.threads
 
-    # Create a pool of processes
-    pool = multiprocessing.Pool(processes=num_processes)
+        # Create a pool of processes
+        pool = multiprocessing.Pool(processes=num_processes)
     
    # Some regex for finding intersting stuff
     regex_secrets = {
@@ -1522,9 +1803,74 @@ if __name__ == '__main__':
     wb_json = Workbook()
 
     if args.postoexcel:
-        data = []
-        json_directory = input(f"{BLUE}[+] Enter the directory path that contains all postman files: {RESET}")
-        postmanToJSON(json_directory, data)   
+
+
+        answerOne = input(f"{BLUE}[+] Would you like to supply a directory path containing all Postman files or a single file path? F/D (F for file D for directory): {RESET}")
+        
+        if answerOne.upper().strip() == "D":
+            json_directory = input(f"{BLUE}[+] Enter the directory path containing all Postman files: {RESET}")
+
+            answerTwo = input(f"{BLUE}[+] Do you wish to print the final count of each HTTP method? Y/N: {RESET}")
+            if answerTwo.upper().strip() == "Y":
+
+                data_postman = []
+                data_methods = []
+                method_counter = {}
+                unique_endpoint = []                  
+                postmanDirectory(json_directory.strip(), True) 
+                
+                answerTwoLoop = input(f"{BLUE}[+] Do you wish to export all endpoints to Excel sheets as well? Y/N: {RESET}")        
+                if answerTwoLoop.upper().strip() == "Y":
+                    
+                    data_postman = []
+                    data_methods = []
+                    method_counter = {}
+                    unique_endpoint = []                   
+                    postmanDirectory(json_directory.strip())
+
+            else:
+                answerThree = input(f"{BLUE}[+] Do you wish to export all endpoints to Excel sheets? Y/N: {RESET}")        
+                if answerThree.upper().strip() == "Y":
+                    
+                    data_postman = []
+                    data_methods = []
+                    method_counter = {}
+                    unique_endpoint = []   
+                    postmanDirectory(json_directory.strip())
+                else:
+                    exit(1)
+
+        elif answerOne.upper().strip() == "F":
+            file_path = input(f"{BLUE}[+] Enter the file path of the Postman file: {RESET}")
+            
+            answerTwo = input(f"{BLUE}[+] Do you wish to print the final count of each HTTP method? Y/N: {RESET}")
+            if answerTwo.upper().strip() == "Y":
+                data_postman = []
+                data_methods = []
+                method_counter = {}
+                unique_endpoint = []
+    
+                postmanFile(file_path.strip(), True) 
+
+                answerTwoLoop = input(f"{BLUE}[+] Do you wish to export all endpoints to Excel sheets as well? Y/N: {RESET}")        
+                if answerTwoLoop.upper().strip() == "Y":
+                    data_postman = []
+                    data_methods = []
+                    method_counter = {}
+                    unique_endpoint = []                    
+                    postmanFile(file_path.strip())
+
+            elif answerTwo.upper().strip() == "N":
+                answerThree = input(f"{BLUE}[+] Do you wish to export all endpoints to Excel sheets? Y/N: {RESET}")        
+                if answerThree.upper().strip() == "Y":
+                    
+                    data_postman = []
+                    data_methods = []
+                    method_counter = {}
+                    unique_endpoint = []      
+                    postmanFile(file_path.strip()) 
+                else:
+                    exit(1)          
 
     if args.directory and args.file:
         print(f'\n{RED}[-] Choose either --file or --directory not both!{RESET}')
