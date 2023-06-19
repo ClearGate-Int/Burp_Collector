@@ -105,7 +105,7 @@ def extract_methods(data):
 
 
 def count_endpoints(json_data):
-    if "\"openapi\":" in str(json_data) or "\'openapi\':" in str(json_data):
+    if 'info' in json_data and 'openapi' in json_data:
 
         paths = json_data.get("paths", {})
         # Iterate over the paths
@@ -131,8 +131,7 @@ def count_endpoints(json_data):
 
 def extract_endpoints(json_data):
     global base_url
-    
-    if "\"openapi\":" in str(json_data) or "\'openapi\':" in str(json_data):
+    if 'info' in json_data and 'openapi' in json_data:
         description = ""
         # Extract information from the OpenAPI file
         base_url = json_data.get("servers", [{}])[0].get("url", "")
