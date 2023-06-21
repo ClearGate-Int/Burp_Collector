@@ -965,12 +965,18 @@ def json_file(file, wb):
             if 'application/json' in content_type_header:
                 
                 path = i.find('path').text
-                
+                domain = i.find('host').text
+
                 if path.endswith(".json") or path.endswith(".json?"):
-                
-                    #path = path.split("?")[0]
-                    domain = i.find('host').text
+            
                     data.append([domain, path, url])
+
+                elif ".json?" in path and not path.endswith(".json?"):
+                    
+                    split_path = path.split("?")[0]
+                    split_url = url.split("?")[0]
+                    data.append([domain, split_path, split_url])
+
                 else:
                     continue
 
@@ -1336,41 +1342,6 @@ def create_worksheet_bitrix(host, string):
         sheet['D1'].alignment = align_center
 
         return sheet, wb
-
-# def create_worksheet_postmantoexcel():
-#     # Creating a new Workbook object
-#     wb = Workbook()
-
-#     # Creating a sheet for the matched patterns and setting the font of the header row
-#     sheet = wb.active
-
-#     sheet.title = "Exorted from Postman"
-
-#     sheet['A1'] = 'Endpoint'
-#     sheet['B1'] = 'Method'
-#     sheet['C1'] = 'Tested?'
-#     header_font = Font(name='Calibri', size=20, bold=True)
-#     sheet['A1'].font = header_font
-#     sheet['B1'].font = header_font
-#     sheet['C1'].font = header_font
-
-#     return wb, sheet
-
-# def extract_endpoints(json_data):
-    
-#     if 'item' in json_data:
-#         for item in json_data['item']:
-#             if 'request' in item:
-#                 request = item['request']
-#                 endpoint = request['url']['raw']
-#                 method = request['method']
-#                 if endpoint == [] or endpoint == "" or method == [] or method == "":
-#                     continue
-
-#                 data.append([endpoint.replace('{{base_url}}', ''), method])
-                
-#             elif 'item' in item:
-#                 extract_endpoints(item)  # Recursive call for nested items
 
 def create_worksheet_json(host, string):
 
