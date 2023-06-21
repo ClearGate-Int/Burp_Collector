@@ -1082,6 +1082,7 @@ def bitrix(file):
                 method = i.find('method').text
                 domain = i.find('host').text
                 patchCheck = path.split("/")
+                tested = "       v        "
 
                 for j in range(len(patchCheck)):
                     if patchCheck[j].count("-") >= 3:
@@ -1103,7 +1104,7 @@ def bitrix(file):
                             method_one = method
                             method_two = uniq_endpoint[2]
                             method = str(method_one) + "/" + str(method_two)
-                            data.append([domain, path, method])
+                            data.append([domain, path, f"   {method}   ", tested])
                             continue
 
                 unique_path = path.split("/")
@@ -1120,7 +1121,7 @@ def bitrix(file):
                         continue    
                 if flag:
                     continue       
-                data.append([domain, path, method])
+                data.append([domain, path, f"   {method}   ", tested])
 
         mime_types = ['application/x-www-form-urlencoded', 'multipart/form-data', 'application/json', 'application/xml', 'text/plain']
         
@@ -1132,7 +1133,7 @@ def bitrix(file):
                     
                     path = i.find('path').text
                     path = path.split("?")[0]
-                    
+                    tested = "       v        "
                     unique_path = path.split("/")
                     path_start = unique_path[1]
                     path_last = unique_path[-1]
@@ -1158,7 +1159,7 @@ def bitrix(file):
                                 method_one = method
                                 method_two = uniq_endpoint[2]
                                 method = str(method_one) + "/" + str(method_two)
-                                data.append([domain, path, method])
+                                data.append([domain, path, f"   {method}   ", tested])
                                 continue
 
                     for j in range(len(patchCheck)):
@@ -1176,7 +1177,7 @@ def bitrix(file):
                             
                     if flag:
                         continue  
-                    data.append([domain, path, method])
+                    data.append([domain, path, f"   {method}   ", tested])
 
     if len(data) > 0:
         
@@ -1225,6 +1226,9 @@ def bitrix(file):
             sheet.cell(row=row, column=1).font = Font(name='Calibri', size=14)
             sheet.cell(row=row, column=2).font = Font(name='Calibri', size=14)
             sheet.cell(row=row, column=3).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=4).font = Font(name='Calibri', size=14)
+            sheet.cell(row=row, column=3).alignment = Alignment(horizontal='center', vertical='center')
+            sheet.cell(row=row, column=4).alignment = Alignment(horizontal='center', vertical='center')
             # Removing duplicates and sorting rows
 
         if not os.path.exists(domain):
@@ -1317,10 +1321,19 @@ def create_worksheet_bitrix(host, string):
         sheet['C1'] = 'METHOD'
         sheet['D1'] = 'TESTED?'
         header_font = Font(name='Calibri', size=20, bold=True)
+        align_center = Alignment(horizontal='center', vertical='center')
+
         sheet['A1'].font = header_font
+        sheet['A1'].alignment = align_center
+
         sheet['B1'].font = header_font
+        sheet['B1'].alignment = align_center
+
         sheet['C1'].font = header_font
+        sheet['C1'].alignment = align_center
+
         sheet['D1'].font = header_font
+        sheet['D1'].alignment = align_center
 
         return sheet, wb
 
