@@ -1256,6 +1256,7 @@ def parse_args():
 |__) \__/ |  \ |       |___ / \  |  |  \ /~~\ \__,  |  \__/ |  \ 
 
 Developed by Sagiv
+Pentesters Swiss Army Knife
 Clear Gate - Cyber Security                                                                                                                           """ 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=banner)
     parser.add_argument('-f', '--file', type=str, required=False, help='Burp File (Right Click on the domain in the Target Scope and select save selected items and select Base64 encode).')
@@ -1267,7 +1268,7 @@ Clear Gate - Cyber Security                                                     
     parser.add_argument('-d', '--domain', required=False, action="store_true", help='Collect Subdomains based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-j', '--json', required=False, action="store_true", help='Collect JSON files based on Burp response via REGEX to Excel file - Fast.')
     parser.add_argument('-J', '--js', required=False, action="store_true", help='Collect JS/MAP URLs based on Burp response via REGEX to Excel file - Fast.')
-    parser.add_argument('-pe', '--postoexcel', required=False, action="store_true", help='Convert Postman file to Excel (Prepare all postman file in a directory) - Fast.')
+    parser.add_argument('-pe', '--postoexcel', required=False, action="store_true", help='Convert Postman file/s to Excel sheet - Fast.')
     parser.add_argument('-i', '--api', required=False, action="store_true", help='Collect APIs and PATHs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
     parser.add_argument('-s', '--secrets', required=False, action="store_true", help="Collect Secrets (AWS/Google keys, etc' - A lot of False-Positive) based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.")
     parser.add_argument('-u', '--urls', required=False, action="store_true", help='Collect URLs based on Burp response via REGEX to Excel file - Might be slow depends on the size of the project.')
@@ -1716,39 +1717,56 @@ if __name__ == '__main__':
         # Create a pool of processes
         pool = multiprocessing.Pool(processes=num_processes)
     
-   # Some regex for finding intersting stuff
+    # Some regex for finding intersting stuff
     regex_secrets = {
-    'google_api'     : r'AIza[0-9A-Za-z-_]{35}',
-    'firebase'  : r'AAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140}',
-    'google_captcha' : r'6L[0-9A-Za-z-_]{38}|^6[0-9a-zA-Z_-]{39}$',
-    'google_oauth'   : r'ya29\.[0-9A-Za-z\-_]+',
-    'amazon_aws_access_key_id' : r'A[SK]IA[0-9A-Z]{16}',
-    'amazon_mws_auth_toke' : r'amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
-    'amazon_aws_url' : r's3\.amazonaws.com[/]+|[a-zA-Z0-9_-]*\.s3\.amazonaws.com',
-    'amazon_aws_url2' : r"(" \
-            r"[a-zA-Z0-9-\.\_]+\.s3\.amazonaws\.com" \
-            r"|s3://[a-zA-Z0-9-\.\_]+" \
-            r"|s3-[a-zA-Z0-9-\.\_\/]+" \
-            r"|s3.amazonaws.com/[a-zA-Z0-9-\.\_]+" \
-            r"|s3.console.aws.amazon.com/s3/buckets/[a-zA-Z0-9-\.\_]+)",
-    'facebook_access_token' : r'EAACEdEose0cBA[0-9A-Za-z]+',
-    'authorization_basic' : r'basic [a-zA-Z0-9=:_\+\/-]{5,100}',
-    'authorization_bearer' : r'bearer [a-zA-Z0-9_\-\.=:_\+\/]{5,100}',
-    'authorization_api' : r'api[key|_key|\s+]+[a-zA-Z0-9_\-]{5,100}',
-    'paypal_braintree_access_token' : r'access_token\$production\$[0-9a-z]{16}\$[0-9a-f]{32}',
-    'square_oauth_secret' : r'sq0csp-[ 0-9A-Za-z\-_]{43}|sq0[a-z]{3}-[0-9A-Za-z\-_]{22,43}',
-    'square_access_token' : r'sqOatp-[0-9A-Za-z\-_]{22}|EAAA[a-zA-Z0-9]{60}',
-    'stripe_standard_api' : r'sk_live_[0-9a-zA-Z]{24}',
-    'stripe_restricted_api' : r'rk_live_[0-9a-zA-Z]{24}',
-    'github_access_token' : r'[a-zA-Z0-9_-]*:[a-zA-Z0-9_\-]+@github\.com*',
-    'rsa_private_key' : r'-----BEGIN RSA PRIVATE KEY-----',
-    'ssh_dsa_private_key' : r'-----BEGIN DSA PRIVATE KEY-----',
-    'ssh_dc_private_key' : r'-----BEGIN EC PRIVATE KEY-----',
-    'pgp_private_block' : r'-----BEGIN PGP PRIVATE KEY BLOCK-----',
-    'json_web_token' : r'ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$',
-    'slack_token' : r"\"api_token\":\"(xox[a-zA-Z]-[a-zA-Z0-9-]+)\"",
-    'SSH_privKey' : r"([-]+BEGIN [^\s]+ PRIVATE KEY[-]+[\s]*[^-]*[-]+END [^\s]+ PRIVATE KEY[-]+)",
-    }
+    'google_api': r'AIza[0-9A-Za-z\-_]{35}',
+    'firebase': r'AAAA[A-Za-z0-9_\-]{7}:[A-Za-z0-9_\-]{140}',
+    'google_oauth': r'ya29\.[0-9A-Za-z\\\-_]+',
+    'amazon_aws_access_key_id': r'A[SK]IA[0-9A-Z]{16}',
+    'amazon_mws_auth_toke': r'amzn\\.mws\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+    'amazon_aws_url': r's3\.amazonaws\.com[/]+|[a-zA-Z0-9_\-]*\.s3\.amazonaws\.com',
+    'amazon_aws_url2': r"([a-zA-Z0-9\-\.\_]+\.s3\.amazonaws\.com)",
+    'amazon_aws_url3': r"|s3://[a-zA-Z0-9\-\.\_]+",
+    'amazon_aws_url4': r"|s3-[a-zA-Z0-9\-\.\_\/]+",
+    'amazon_aws_url5': r"|s3\.amazonaws\.com/[a-zA-Z0-9\-\.\_]+",
+    # 'aws_s3_bucket1': r'\b(?:[a-z0-9.-]{3,255}|s3\.console\.aws\.amazon\.com/s3/buckets/[a-zA-Z0-9\-._]+)\b',
+    'facebook_access_token': r'EAACEdEose0cBA[0-9A-Za-z]+',
+    'authorization_basic': r'basic [a-zA-Z0-9=:_\+\/\-]{5,100}',
+    'authorization_bearer': r'bearer [a-zA-Z0-9_\\\-\.=:_\+\/]{5,100}',
+    'authorization_api': r'api\[key\|_key\|\s+\]+[a-zA-Z0-9_\\\-]{5,100}',
+    'paypal_braintree_access_token': r'access_token\$production\$[0-9a-z]{16}\$[0-9a-f]{32}',
+    'square_oauth_secret': r'sq0csp\-[ 0-9A-Za-z\\\-_]{43}|sq0[a-z]{3}\-[0-9A-Za-z\\\-_]{22,43}',
+    'square_access_token': r'sqOatp\-[0-9A-Za-z\\\-_]{22}|EAAA[a-zA-Z0-9]{60}',
+    'stripe_standard_api': r'sk_live_[0-9a-zA-Z]{24}',
+    'stripe_restricted_api': r'rk_live_[0-9a-zA-Z]{24}',
+    'github_access_token': r'[a-zA-Z0-9_\\\-]*:[a-zA-Z0-9_\\\-]+@github\.com*',
+    'rsa_private_key': r'-----BEGIN RSA PRIVATE KEY-----',
+    'ssh_dsa_private_key': r'-----BEGIN DSA PRIVATE KEY-----',
+    'ssh_dc_private_key': r'-----BEGIN EC PRIVATE KEY-----',
+    'pgp_private_block': r'-----BEGIN PGP PRIVATE KEY BLOCK-----',
+    'json_web_token': r'ey[A-Za-z0-9_\\\-=\+\/]{5,100}\.[A-Za-z0-9_\\\-=\+\/]{5,100}\.?[A-Za-z0-9_\\\-=\+\/]*$',
+    'slack_token': r'"api_token":"(xox[a-zA-Z]\-[a-zA-Z0-9\-]+)"',
+    'SSH_privKey': r"([-]+BEGIN [^\s]+ PRIVATE KEY[-]+[\s]*[^-]*[-]+END [^\s]+ PRIVATE KEY[-]+)",
+    'email_address': r'\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b',
+    'aws_access_key': r'AKIA[0-9A-Z]{16}',
+    'ssh_private_key': r'-----BEGIN (?:RSA|DSA|EC|OPENSSH) PRIVATE KEY-----[a-zA-Z0-9+\/=\s]+-----END (?:RSA|DSA|EC|OPENSSH) PRIVATE KEY-----',
+    'md5_hash': r'\b[a-f0-9]{32}\b',
+    'sha1_hash': r'\b[a-f0-9]{40}\b',
+    'sha256_hash': r'\b[a-f0-9]{64}\b',
+    'ssn': r'\b[0-9]{3}\-[0-9]{2}\-[0-9]{4}\b',
+    'ccn': r'\b(?:\d[ -]*?){13,16}\b',
+    # 'api_token': r'\b[A-Za-z0-9_]{32}\b',
+    'aws_s3_bucket': r'\b[a-z0-9.-]{3,255}\b',
+    'aws_secret_access_key': r'[A-Za-z0-9/+=]{40}',
+    'slack_webhook_url': r'https://hooks\.slack\.com/services/[A-Z0-9/]+',
+    'ssn_with_dashes': r'\b[0-9]{3}\-[0-9]{2}\-[0-9]{4}\b',
+    'github_access_token_v2': r'[a-f0-9]{40}',
+    'mongodb_connection_string': r'mongodb\+srv://[^:\s]+:[^@\s]+@[^/\s]+/\S+',
+    'phone_number': r'\b(?:\+\d{1,3}[-. ]?)?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}\b',
+    'cc_expiration': r'\b\d{2}\/\d{2}\b',
+    'bitcoin_address': r'\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b',
+}
+
 
     # Regex for finding Paths and APIs Endpoints *
     api_extractor = { 
@@ -2363,29 +2381,30 @@ if __name__ == '__main__':
 
         wordlist_creator(filename, host)
 
-    # Create a pool of processes using a context manager
-    with multiprocessing.Pool(processes=num_processes) as pool:
-        # Start the processes
-        results = pool.starmap_async(main, task_args)    
+    if not args.wordlist or args.postoexcel:
+        # Create a pool of processes using a context manager
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            # Start the processes
+            results = pool.starmap_async(main, task_args)    
+            
+            # Wait for the results 
+            while not results.ready():
+                time.sleep(0)
+
+        # Terminate all processes
+        pool.terminate()
+        pool.join()
+
+        check_dup = []
+
+        for excel in final_xlsx:
+            if excel not in check_dup:
+                check_dup.append(excel)
+                adjust_column_widths_disk(excel)
+
+            if excel in check_dup:
+                continue
         
-        # Wait for the results 
-        while not results.ready():
-            time.sleep(0)
-
-    # Terminate all processes
-    pool.terminate()
-    pool.join()
-
-    check_dup = []
-
-    for excel in final_xlsx:
-        if excel not in check_dup:
-            check_dup.append(excel)
-            adjust_column_widths_disk(excel)
-
-        if excel in check_dup:
-            continue
-    
     end = time.time()
     hours, rem = divmod(end-start, 3600)
     minutes, seconds = divmod(rem, 60)        
