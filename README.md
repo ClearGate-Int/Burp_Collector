@@ -2,8 +2,8 @@ A Multi-Processing Tool for extracting information to XLSX file from a Burp Suit
 
 1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST and GraphQL).
 2. Collect --bitrix result to JSON file with body and parameters for Postman Application
-3. Extract PATHs and Possible APIs from response body.
-4. Extract URLs from response body.
+3. Extract PATHs and Possible APIs from the response body.
+4. Extract URLs from the response body.
 5. Extract Secrets (AWS/Google/Firebase,etc').
 6. Collect JSON files based on Burp response via REGEX
 7. Convert Postman files to Excel
@@ -11,7 +11,7 @@ A Multi-Processing Tool for extracting information to XLSX file from a Burp Suit
 
 OPTION - 1: In Burp Suite: Right Click on the domain in the Target Scope - Select "save selected items" and then select "Base64-encode" (Some requests may be missing from the target tree scope - Burp Suite issue...).
 
-OPTION - 2: In Burp Suite: Navigate to Proxy - HTTP History - Press CTRL + A - Right Click - Select "save selected items" - Leave "Base64-encode" checked (This way all of your requests will be included, again go blame PortSwigger).
+OPTION - 2: In Burp Suite: Navigate to Proxy - HTTP History - Press CTRL + A - Right Click - Select "save selected items" - Leave "Base64-encode" checked (This way, all of your requests will be included, again go blame PortSwigger).
 
 Installation: 
 
