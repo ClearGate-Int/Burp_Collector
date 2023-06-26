@@ -1,5 +1,6 @@
 # About
 A Multi-Processing Tool for extracting information to an Excel file from a Burp Suite file (After Generating Enough Traffic).
+#### Developed by: Sagiv
 
 # Features
 1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST and GraphQL).
