@@ -1113,20 +1113,6 @@ def bitrix(file):
                             data.append([domain, path, f"   {method}   ", tested])
                             continue
 
-                unique_path = path.split("/")
-                path_start = unique_path[1]
-                path_last = unique_path[-1]
-                path_start = "/" + str(path_start)
-                path_last = "/" + str(path_last)
-                if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
-                    continue
-
-                for endpoint in data:
-                    if str(endpoint[1]).startswith(path_start) and str(endpoint[1]).endswith(path_last):
-                        flag = True
-                        continue    
-                if flag:
-                    continue       
                 data.append([domain, path, f"   {method}   ", tested])
 
         mime_types = ['application/x-www-form-urlencoded', 'multipart/form-data', 'application/json', 'application/xml', 'text/plain']
@@ -1149,11 +1135,6 @@ def bitrix(file):
 
                     if path.endswith("map") or path.endswith("map?") or path.endswith("json") or path.endswith("json?"):
                         continue
-
-                    for endpoint in data:
-                        if str(endpoint[1]).startswith(path_start) and str(endpoint[1]).endswith(path_last):
-                            flag = True
-                            continue     
 
                     method = i.find('method').text
                     domain = i.find('host').text
@@ -1943,7 +1924,7 @@ if __name__ == '__main__':
                 task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
                 print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
                 task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
-                print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+                print(f'{BLUE}\n[+] Creating a wordlist tailored to {host}...{RESET}')  
                 wordlist_creator(filename, host)
 
         elif not args.directory:
@@ -1991,7 +1972,7 @@ if __name__ == '__main__':
             task_args.append((filename, "Path_and_Endpoints", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
             print(f'{BLUE}\n[+] Testing Sub-Domains method for {host}...{RESET}')  
             task_args.append((filename, "Sub-Domains", sheet_url_finder, wb_url_finder, uri_finder, regex_secrets, api_extractor, args, matched_patterns, final_xlsx))
-            print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+            print(f'{BLUE}\n[+] Creating a wordlist tailored to {host}...{RESET}')  
             wordlist_creator(filename, host)
             
     if not args.all:
@@ -2377,7 +2358,7 @@ if __name__ == '__main__':
             break
         
         if not args.all and not args.verbose:  
-            print(f'{BLUE}\n[+] Creating wordlist tailored to {host}...{RESET}')  
+            print(f'{BLUE}\n[+] Creating a wordlist tailored to {host}...{RESET}')  
 
         wordlist_creator(filename, host)
 
