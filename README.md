@@ -84,4 +84,12 @@ Options:
       
   -v, --verbose  
   
-      If set, output will be printed to the screen with colors       
+      If set, output will be printed to the screen with colors 
+      
+  --version  
+  
+      Outputs the current version of the tool.     
+      
+  --update
+  
+      Checks for new updates. If there is a new update, it will be downloaded to the current folder as zip.     
