@@ -3,14 +3,16 @@ A Multi-Processing Tool for extracting information to an Excel file from a Burp 
 #### Developed by: Sagiv
 
 # Features
-1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST and GraphQL).
+1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST, and GraphQL).
 2. Collect --bitrix result to JSON file with body and parameters for Postman Application
 3. Extract PATHs and Possible APIs from the response body.
 4. Extract URLs from the response body.
 5. Extract Secrets (AWS/Google/Firebase,etc').
 6. Collect JSON files based on Burp response via REGEX
-7. Convert Postman files to Excel
-8. Create a tailored wordlist for your target
+7. Collect Subdomains based on Burp response via REGEX to Excel file.
+8. Collect JS/MAP URLs based on Burp response via REGEX to Excel file.
+9. Convert Postman files to Excel
+10. Create a tailored wordlist for your target
 
 # Installation: 
 
@@ -52,11 +54,15 @@ Options:
   
    -w, --wordlist  
   
-      Create a tailored wordlist for your target (Based on Request/Responses including Headers/Cookies and body
+      Create a tailored wordlist for your target (Based on Requests/Responses including Headers/Cookies and body
    
    -J, --js 
   
       Collect JS/MAP URLs based on Burp response via REGEX to Excel file
+      
+   -d, --domain
+  
+      Collect JSON files based on Burp response via REGEX to Excel file - Fast.
       
   -i, --api  
   
@@ -72,7 +78,7 @@ Options:
       
   -pe, --postoexcel  
   
-      Convert Postman files to Excel - Prepare a direcotry containing all postman files (fast)      
+      Convert Postman files to Excel - Prepare a direcotry containing all Postman files (fast)      
       
   -u, --urls  
   
@@ -88,8 +94,8 @@ Options:
       
   --version  
   
-      Outputs the current version of the tool.     
+      Print the current version of the tool.     
       
   --update
   
-      Checks for new updates. If there is a new update, it will be downloaded to the current folder as zip.     
+      Checks for new updates. If there is a new update, it will be downloaded to the current folder as a zip.     
