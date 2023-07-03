@@ -98,4 +98,4 @@ Options:
       
   --update
   
-      Checks for new updates. If there is a new update, it will be downloaded to the current folder as a zip.     
+      Checks for new updates. If there is a new update, it will be downloaded and updated automatically.     
