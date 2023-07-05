@@ -86,7 +86,7 @@ Options:
       
   -t, --threads  
   
-     Number of threads run in parallel (Use this if you want to speed up the process) 
+      Number of processes to run in parallel (Default is the number of your CPU cores).
       
   -v, --verbose  
   
