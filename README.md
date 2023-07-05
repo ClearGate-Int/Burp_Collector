@@ -3,16 +3,16 @@ A Multi-Processing Tool for extracting information to an Excel file from a Burp 
 #### Developed by: Sagiv
 
 # Features
-1. Extract API Endpoints based on the XML/JSON Content-Type in the response (SOAP, REST, and GraphQL).
-2. Collect --bitrix result to JSON file with body and parameters for Postman Application
-3. Extract PATHs and Possible APIs from the response body.
-4. Extract URLs from the response body.
-5. Extract Secrets (AWS/Google/Firebase,etc').
-6. Collect JSON files based on Burp response via REGEX
-7. Collect Subdomains based on Burp response via REGEX to Excel file.
-8. Collect JS/MAP URLs based on Burp response via REGEX to Excel file.
-9. Convert Postman files to Excel
-10. Create a tailored wordlist for your target
+1. Collect and extract all API Endpoints you interacted with during the test (SOAP, REST, and GraphQL) to an Excel file - Highly recommended.
+2. Collect and extract all API Endpoints with their body and parameters to a Postman collection - Highly recommended.
+3. Collect and extract possible APIs found in files during the test to an Excel file - It might generate a lot of junk, but it could be helpful if used right.
+4. Collect and extract all URLs encountered during the test to an Excel file - This can be slow depending on the project size.
+5. Collect and extract all possible secrets (AWS/Google/Firebase, etc') that might be disclosed - Most of the time the output will be False-Positive.
+6. Collect and extract all JSON files encountered during the test into an Excel file - Fast.
+7. Collect and extract all subdomains encountered during the test into an Excel file - Fast.
+8. Collect and extract all JS/MAP URLs encountered during the test to an Excel file - Fast.
+9. Convert Postman collections to an Excel file - Recommended!
+10. Create a tailored wordlist for your target (Based on Requests/Responses/Cookies/Headers etc') - Recommended!
 
 # Installation: 
 
@@ -23,7 +23,7 @@ A Multi-Processing Tool for extracting information to an Excel file from a Burp 
 
 OPTION - 1: In Burp Suite: Right Click on the domain in the Target Scope - Select "save selected items" and then select "Base64-encode" (Some requests may be missing from the target tree scope - Burp Suite issue...).
 
-OPTION - 2: In Burp Suite: Navigate to Proxy - HTTP History - Press CTRL + A - Right Click - Select "save selected items" - Leave "Base64-encode" checked (This way, all of your requests will be included, again go blame PortSwigger).
+OPTION - 2: In Burp Suite: Navigate to Proxy - HTTP History - Press CTRL + A - Right Click - Select "save selected items" - Leave "Base64-encode" checked.
 
 # Usage:
 
@@ -46,43 +46,43 @@ Options:
       
   -b, --bitrix  
   
-      Generate API Endpoints to xlsx file based on JSON/XML Content-Type via Burp Response (Recommended for Bitrix24 Task)
+      Collect and extract all API Endpoints you interacted with during the test (SOAP, REST, and GraphQL) to an Excel file - Highly recommended.
       
    -p, --postman  
   
-      Collect --bitrix result to JSON file with body and parameters for Postman Application    
+      Collect and extract all API Endpoints with their body and parameters to a Postman collection - Highly recommended.
   
    -w, --wordlist  
   
-      Create a tailored wordlist for your target (Based on Requests/Responses including Headers/Cookies and body
+      Create a tailored wordlist for your target (Based on Requests/Responses/Cookies/Headers etc') - Recommended!
    
    -J, --js 
   
-      Collect JS/MAP URLs based on Burp response via REGEX to Excel file
+      Collect and extract all JS/MAP URLs encountered during the test to an Excel file - Fast.
       
    -d, --domain
   
-      Collect JSON files based on Burp response via REGEX to Excel file - Fast.
+      Collect and extract all subdomains encountered during the test into an Excel file - Fast.
       
   -i, --api  
   
-      Collect APIs and PATHs based on Burp response via REGEX
+      Collect and extract possible APIs found in files during the test to an Excel file - It might generate a lot of junk, but it could be helpful if used right.
       
    -j, --json  
   
-      Collect JSON Files based on Burp request PATH via REGEX     
+      Collect and extract all JSON files encountered during the test into an Excel file - Fast.   
       
   -s, --secrets  
   
-      Collect Secrets (AWS/Google keys, etc') based on Burp response via REGEX (Can be a bit slow...)
+      Collect and extract all possible secrets (AWS/Google/Firebase, etc') that might be disclosed - Most of the time the output will be False-Positive.
       
   -pe, --postoexcel  
   
-      Convert Postman files to Excel - Prepare a direcotry containing all Postman files (fast)      
+      Convert Postman collections to an Excel file - Recommended! 
       
   -u, --urls  
   
-      Collect URLs based on Burp response via REGEX
+      Collect and extract all URLs encountered during the test to an Excel file - This can be slow depending on the project size.
       
   -t, --threads  
   
