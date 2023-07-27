@@ -2,6 +2,10 @@
 A Multi-Processing Tool for extracting information to an Excel file from a Burp Suite file (After Generating Enough Traffic).
 #### Developed by: Sagiv
 
+## The repository is not maintained here anymore, instead, go to:
+
+https://github.com/sAjibuu/Burp_Collector
+
 # Features
 1. Collect and extract all API Endpoints you interacted with during the test (SOAP, REST, and GraphQL) to an Excel file - Highly recommended.
 2. Collect and extract all API Endpoints with their body and parameters to a Postman collection - Highly recommended.
